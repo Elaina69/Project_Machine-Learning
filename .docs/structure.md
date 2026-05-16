@@ -21,7 +21,8 @@ DoAn_MachineLearning_UTT/
 │   ├── feature_engineering.py         # Tạo lag, rolling, time features
 │   ├── models.py                      # Định nghĩa, huấn luyện & đánh giá 10 mô hình (3 trivial + 7 ML)
 │   ├── visualization.py              # Vẽ biểu đồ, charts
-│   └── comparison.py                 # So sánh 2 baselines
+│   ├── comparison.py                 # So sánh 2 baselines
+│   └── optimization.py               # Tối ưu hóa đa mục tiêu (Pymoo NSGA-II/III)
 ├── models/                            # Lưu mô hình đã train (.pkl, .joblib, .pth)
 ├── resultImages/                      # Hình ảnh kết quả (biểu đồ, charts)
 ├── main.ipynb                         # Notebook chính (phân tích + huấn luyện)

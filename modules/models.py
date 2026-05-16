@@ -56,13 +56,33 @@ def mape(y_true, y_pred):
     return np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100
 
 
-def evaluate(y_true, y_pred) -> dict:
-    """Tính 4 metrics: MAE, RMSE, MAPE, R²."""
+def mase(y_true, y_pred, y_train=None):
+    """
+    Mean Absolute Scaled Error.
+    Scale = MAE của naive forecast (shift-1) trên training set.
+    Nếu không có y_train, dùng naive trên chính y_true.
+    MASE < 1 → tốt hơn naive baseline.
+    """
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    if y_train is not None:
+        y_train = np.array(y_train)
+        naive_errors = np.abs(np.diff(y_train))
+    else:
+        naive_errors = np.abs(np.diff(y_true))
+    scale = np.mean(naive_errors) if len(naive_errors) > 0 else 1.0
+    if scale == 0:
+        scale = 1.0
+    return np.mean(np.abs(y_true - y_pred)) / scale
+
+
+def evaluate(y_true, y_pred, y_train=None) -> dict:
+    """Tính 5 metrics: MAE, RMSE, MAPE, R², MASE."""
     return {
         'MAE': round(mean_absolute_error(y_true, y_pred), 4),
         'RMSE': round(np.sqrt(mean_squared_error(y_true, y_pred)), 4),
         'MAPE': round(mape(y_true, y_pred), 4),
         'R2': round(r2_score(y_true, y_pred), 4),
+        'MASE': round(mase(y_true, y_pred, y_train), 4),
     }
 
 
@@ -335,11 +355,15 @@ def train_and_evaluate(models: dict, X_train, y_train,
                        X_valid, y_valid, X_test, y_test,
                        baseline_name: str = "Baseline") -> pd.DataFrame:
     """
-    Huấn luyện tất cả mô hình, đánh giá trên valid + test.
+    Huấn luyện tất cả mô hình, đánh giá trên train + valid + test.
+    Tiêu chí chính: RMSE (sắp xếp tăng dần = tốt nhất ở trên).
 
     Returns:
-        DataFrame với columns: model, MAE, RMSE, MAPE, R2 (trên test set)
+        (results_df, trained_models)
+        results_df: DataFrame với đầy đủ train/valid/test metrics, đã sort theo test_RMSE.
     """
+    import time as _time
+
     results = []
     trained_models = {}
 
@@ -350,43 +374,62 @@ def train_and_evaluate(models: dict, X_train, y_train,
     for name, model in models.items():
         print(f"\n--- {name} ---")
         try:
+            t0 = _time.time()
             if isinstance(model, LSTMWrapper):
                 model.fit(X_train, y_train, X_valid, y_valid)
             else:
                 model.fit(X_train, y_train)
+            train_time = round(_time.time() - t0, 3)
 
-            y_pred_test = model.predict(X_test)
+            y_pred_train = model.predict(X_train)
             y_pred_valid = model.predict(X_valid)
+            y_pred_test = model.predict(X_test)
 
-            test_metrics = evaluate(y_test, y_pred_test)
-            valid_metrics = evaluate(y_valid, y_pred_valid)
+            train_metrics = evaluate(y_train, y_pred_train, y_train)
+            valid_metrics = evaluate(y_valid, y_pred_valid, y_train)
+            test_metrics = evaluate(y_test, y_pred_test, y_train)
 
+            print(f"   Train — MAE={train_metrics['MAE']:.2f}  "
+                  f"RMSE={train_metrics['RMSE']:.2f}  R²={train_metrics['R2']:.4f}  "
+                  f"MASE={train_metrics['MASE']:.4f}")
             print(f"   Valid — MAE={valid_metrics['MAE']:.2f}  "
-                  f"RMSE={valid_metrics['RMSE']:.2f}  R²={valid_metrics['R2']:.4f}")
+                  f"RMSE={valid_metrics['RMSE']:.2f}  R²={valid_metrics['R2']:.4f}  "
+                  f"MASE={valid_metrics['MASE']:.4f}")
             print(f"   Test  — MAE={test_metrics['MAE']:.2f}  "
-                  f"RMSE={test_metrics['RMSE']:.2f}  R²={test_metrics['R2']:.4f}")
+                  f"RMSE={test_metrics['RMSE']:.2f}  R²={test_metrics['R2']:.4f}  "
+                  f"MASE={test_metrics['MASE']:.4f}")
+            print(f"   ⏱ Thời gian huấn luyện: {train_time:.3f}s")
 
             results.append({
                 'model': name,
                 'baseline': baseline_name,
-                **{f'test_{k}': v for k, v in test_metrics.items()},
+                'train_time_s': train_time,
+                **{f'train_{k}': v for k, v in train_metrics.items()},
                 **{f'valid_{k}': v for k, v in valid_metrics.items()},
+                **{f'test_{k}': v for k, v in test_metrics.items()},
             })
             trained_models[name] = {
                 'instance': model,
-                'y_pred_test': y_pred_test,
+                'y_pred_train': y_pred_train,
                 'y_pred_valid': y_pred_valid,
-                'test_metrics': test_metrics,
+                'y_pred_test': y_pred_test,
+                'train_metrics': train_metrics,
                 'valid_metrics': valid_metrics,
+                'test_metrics': test_metrics,
+                'train_time_s': train_time,
             }
         except Exception as e:
             print(f"   ❌ Lỗi: {e}")
             results.append({'model': name, 'baseline': baseline_name,
                             'test_MAE': np.nan, 'test_RMSE': np.nan,
-                            'test_MAPE': np.nan, 'test_R2': np.nan})
+                            'test_MAPE': np.nan, 'test_R2': np.nan,
+                            'test_MASE': np.nan, 'train_time_s': np.nan})
 
     results_df = pd.DataFrame(results)
-    print(f"\n✅ {baseline_name} hoàn tất!")
+    # Sắp xếp theo test_RMSE tăng dần (điểm thấp = tốt nhất ở trên)
+    if 'test_RMSE' in results_df.columns:
+        results_df = results_df.sort_values('test_RMSE', ascending=True).reset_index(drop=True)
+    print(f"\n✅ {baseline_name} hoàn tất! (sắp xếp theo test_RMSE ↑)")
     return results_df, trained_models
 
 

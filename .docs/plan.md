@@ -199,12 +199,15 @@ Tổng: 2 baselines × 10 mô hình = 20 lần huấn luyện + đánh giá
 
 ### 6.4 Metrics đánh giá
 
-| Metric | Công thức / Mô tả |
-|---|---|
-| **MAE** | Mean Absolute Error |
-| **RMSE** | Root Mean Squared Error |
-| **MAPE** | Mean Absolute Percentage Error |
-| **R²** | Coefficient of Determination |
+| Metric | Công thức / Mô tả | Vai trò |
+|---|---|---|
+| **RMSE** ⭐ | Root Mean Squared Error | **Tiêu chí chính** — sắp xếp bảng kết quả |
+| **MAE** | Mean Absolute Error | Đánh giá sai số tuyệt đối trung bình |
+| **MAPE** | Mean Absolute Percentage Error | Đánh giá sai số % |
+| **R²** | Coefficient of Determination | Tỷ lệ phương sai giải thích được |
+| **MASE** | Mean Absolute Scaled Error | So với naive baseline (MASE < 1 = tốt hơn naive) |
+
+> **Lưu ý:** Bảng kết quả sau huấn luyện hiển thị đầy đủ metrics của **cả 3 tập** (train/valid/test), sắp xếp theo **test_RMSE tăng dần** (tốt nhất ở trên).
 
 ---
 
@@ -214,22 +217,18 @@ Tổng: 2 baselines × 10 mô hình = 20 lần huấn luyện + đánh giá
 Module: modules/comparison.py → gọi trong main.ipynb mục 6
 ```
 
-> **ĐÂY LÀ PHẦN CỐT LÕI** của đề bài SV16 — so sánh hiệu năng dự báo flow giữa Baseline A và Baseline B trên cùng 7 mô hình.
+> **ĐÂY LÀ PHẦN CỐT LÕI** của đề bài SV16 — so sánh hiệu năng dự báo flow giữa Baseline A và Baseline B trên cùng 10 mô hình.
 
 ### Bảng so sánh tổng hợp (ví dụ):
 
-| Mô hình | Baseline A MAE | Baseline A RMSE | Baseline B MAE | Baseline B RMSE | Kết luận |
-|---|---|---|---|---|---|
-| Linear Regression | ? | ? | ? | ? | A/B tốt hơn |
-| Ridge Regression | ? | ? | ? | ? | ... |
-| KNN | ? | ? | ? | ? | ... |
-| Decision Tree | ? | ? | ? | ? | ... |
-| Random Forest | ? | ? | ? | ? | ... |
-| XGBoost | ? | ? | ? | ? | ... |
-| LSTM | ? | ? | ? | ? | ... |
+| Mô hình | A_RMSE | A_MAE | A_MASE | B_RMSE | B_MAE | B_MASE | Kết luận |
+|---|---|---|---|---|---|---|---|
+| XGBoost | ? | ? | ? | ? | ? | ? | A/B tốt hơn |
+| Random Forest | ? | ? | ? | ? | ? | ? | ... |
+| ... | | | | | | | |
 
 ### Nội dung so sánh:
-- [ ] **Bảng tổng hợp metrics** (MAE, RMSE, MAPE, R²) cho mỗi baseline × mỗi mô hình
+- [ ] **Bảng tổng hợp metrics** (MAE, RMSE, MAPE, R², MASE) cho mỗi baseline × mỗi mô hình
 - [ ] **Biểu đồ so sánh**: grouped bar chart / radar chart so sánh metrics giữa 2 baselines
 - [ ] **Biểu đồ Actual vs Predicted** cho mô hình tốt nhất của mỗi baseline
 - [ ] **Phân tích sai số theo thời gian**: baseline nào predict tốt hơn vào giờ cao điểm?
@@ -288,17 +287,24 @@ main.ipynb
 │   │   ├── Decision Tree Regressor
 │   │   ├── Random Forest Regressor
 │   │   ├── XGBoost Regressor
-│   │   └── LSTM
-│   ├── 5.2. Huấn luyện 7 mô hình cho Baseline B
-│   │   └── (cùng 7 mô hình như trên)
+│   ├── 5.1. Huấn luyện 10 mô hình cho Baseline A
+│   ├── 5.2. Huấn luyện 10 mô hình cho Baseline B
 │   └── 5.3. Lưu mô hình vào models/
 │
-└── 6. So sánh 2 Baseline
-    ├── 6.1. Bảng tổng hợp metrics (2 baselines × 7 mô hình)
-    ├── 6.2. Biểu đồ so sánh (bar chart, radar chart)
-    ├── 6.3. Actual vs Predicted cho mô hình tốt nhất
-    ├── 6.4. Phân tích sai số theo thời gian
-    └── 6.5. Nhận xét & Kết luận
+├── 6. So sánh 2 Baseline
+│   ├── 6.1. Bảng tổng hợp metrics (2 baselines × 10 mô hình)
+│   ├── 6.2. Biểu đồ so sánh (bar chart, radar chart)
+│   ├── 6.3. Actual vs Predicted cho mô hình tốt nhất
+│   ├── 6.4. Phân tích sai số theo thời gian
+│   └── 6.5. Nhận xét & Kết luận
+│
+├── 7. Tối ưu hóa đa mục tiêu (Pymoo)
+│   ├── 7.1. Chọn 2 mô hình tốt nhất trên cả 2 baselines
+│   ├── 7.2. Cấu hình tối ưu hóa (NSGA-II, pop_size, n_gen)
+│   ├── 7.3. Chạy tối ưu hóa Baseline A
+│   ├── 7.4. Chạy tối ưu hóa Baseline B
+│   ├── 7.5. Trực quan hóa Pareto Front (3D + 2D)
+│   └── 7.6. Phân tích đánh đổi (Trade-off Analysis)
 ```
 
 ---
@@ -347,9 +353,10 @@ DoAn_MachineLearning_UTT/
 │   ├── data_loader.py                 # Load & parse CSV
 │   ├── eda.py                         # Thống kê mô tả, EDA, visualizations
 │   ├── feature_engineering.py         # Tạo lag, rolling, time features
-│   ├── models.py                      # Định nghĩa, huấn luyện & đánh giá 7 mô hình
+│   ├── models.py                      # Định nghĩa, huấn luyện & đánh giá 10 mô hình
 │   ├── visualization.py              # Vẽ biểu đồ, charts
-│   └── comparison.py                 # So sánh 2 baselines
+│   ├── comparison.py                 # So sánh 2 baselines
+│   └── optimization.py               # Tối ưu hóa đa mục tiêu (Pymoo NSGA-II/III)
 ├── models/                            # Lưu mô hình đã train (.pkl, .joblib, .pth)
 ├── resultImages/                      # Hình ảnh kết quả (biểu đồ, charts)
 ├── main.ipynb                         # Notebook chính (phân tích + huấn luyện)
@@ -372,6 +379,7 @@ seaborn>=0.12
 plotly>=5.15
 ipywidgets>=8.0           # Cho dashboard trong notebook
 joblib                    # Lưu mô hình
+pymoo>=0.6.0              # Tối ưu hóa đa mục tiêu
 ```
 
 ---
@@ -406,10 +414,12 @@ joblib                    # Lưu mô hình
 - [ ] Nhận xét, kết luận chi tiết về sự khác biệt giữa 2 baselines
 
 ### Sản phẩm
-- [ ] `main.ipynb` chạy được end-to-end
+- [ ] `main.ipynb` chạy được end-to-end (bao gồm Step 7 tối ưu hóa)
 - [ ] `demo.ipynb` Dashboard hoạt động (chọn sensor, xem kết quả)
 - [ ] Biểu đồ Actual vs Predicted
 - [ ] Hệ thống cảnh báo (bình thường / theo dõi / cảnh báo)
+- [ ] Tối ưu hóa đa mục tiêu 2 mô hình tốt nhất (Pymoo)
+- [ ] Pareto Front visualization + phân tích đánh đổi
 
 ---
 

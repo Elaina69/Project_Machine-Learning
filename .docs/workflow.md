@@ -234,10 +234,11 @@ models.train_and_evaluate(models, X_train, y_train, X_valid, y_valid, X_test, y_
          │     └──────────────────────────────────────────────┘
          │
          │     → model.predict(X_test)
-         │     → evaluate(y_test, y_pred) → {MAE, RMSE, MAPE, R²}
+         │     → evaluate(y_test, y_pred, y_train) → {MAE, RMSE, MAPE, R², MASE}
          │
-         ├── results_df: DataFrame metrics (10 dòng × 8 cột metrics)
-         └── trained_models: dict chứa {model, y_pred_test, metrics}
+         ├── results_df: DataFrame metrics (10 dòng × train/valid/test × 5 metrics)
+         │   ⭐ Sắp xếp theo test_RMSE tăng dần (tốt nhất ở trên)
+         └── trained_models: dict chứa {model, y_pred_train/valid/test, metrics, train_time}
 ```
 
 **LSTM Architecture (`LSTMNet`):**
@@ -265,7 +266,7 @@ models.save_models(trained_models, 'models/', 'Baseline_A')
 ```
 viz.plot_all_model_results(trained_models, y_test, baseline_name)
          │
-         └── Tạo 1 figure với 7 subplot (mỗi model 1 subplot):
+         └── Tạo 1 figure với 10 subplot (mỗi model 1 subplot):
                - Line xanh: Actual flow (300 điểm đầu)
                - Line cam: Predicted flow
                - Title hiển thị MAE, RMSE, R²
@@ -281,10 +282,11 @@ viz.plot_all_model_results(trained_models, y_test, baseline_name)
 comparison.create_comparison_table(results_a, results_b)
          │
          └── DataFrame ngang:
-               model | A_MAE | A_RMSE | A_MAPE | A_R2 | B_MAE | B_RMSE | B_MAPE | B_R2 | better
-               ──────┼───────┼────────┼────────┼──────┼───────┼────────┼────────┼──────┼──────
-               1_LR  │ ...   │ ...    │ ...    │ ...  │ ...   │ ...    │ ...    │ ...  │ A/B
-               ...   │       │        │        │      │       │        │        │      │
+               model | A_MAE | A_RMSE | A_MAPE | A_R2 | A_MASE | B_MAE | B_RMSE | B_MAPE | B_R2 | B_MASE | better
+               ──────┼───────┼────────┼────────┼──────┼───────┼───────┼────────┼────────┼──────┼───────┼──────
+               0a_SN │ ...   │ ...    │ ...    │ ...  │ ...   │ ...   │ ...    │ ...    │ ...  │ ...   │ A/B
+               ...   │       │        │        │      │       │       │        │        │      │       │
+               ⭐ 'better' dựa trên RMSE (thấp hơn = tốt hơn)
 ```
 
 #### 6.2 — Biểu đồ so sánh
@@ -292,11 +294,12 @@ comparison.create_comparison_table(results_a, results_b)
 ```
 comparison.plot_comparison_all_metrics(results_a, results_b)
          │
-         └── 4 grouped bar charts:
-               - test_MAE:  Baseline A vs B cho 7 models
-               - test_RMSE: Baseline A vs B cho 7 models
-               - test_MAPE: Baseline A vs B cho 7 models
-               - test_R2:   Baseline A vs B cho 7 models
+         └── 5 grouped bar charts:
+               - test_MAE:  Baseline A vs B cho 10 models
+               - test_RMSE: Baseline A vs B cho 10 models (tiêu chí chính)
+               - test_MAPE: Baseline A vs B cho 10 models
+               - test_R2:   Baseline A vs B cho 10 models
+               - test_MASE: Baseline A vs B cho 10 models
 ```
 
 #### 6.3 — Radar Chart
@@ -304,7 +307,7 @@ comparison.plot_comparison_all_metrics(results_a, results_b)
 ```
 comparison.plot_comparison_radar(results_a, results_b)
          │
-         └── Polar chart 7 cánh (1 per model):
+         └── Polar chart 10 cánh (1 per model):
                - Đường xanh = R² Baseline A
                - Đường cam  = R² Baseline B
 ```
@@ -325,6 +328,78 @@ comparison.generate_conclusion(results_a, results_b)
          ├── 🏆 Best model Baseline B: tên + metrics
          ├── 📊 RMSE trung bình: A vs B → Baseline nào tốt hơn
          └── 📝 So sánh từng model: A vs B → winner + chênh lệch
+```
+
+---
+
+### Bước 7 → Tối ưu hóa đa mục tiêu (Pymoo)
+
+#### 7.1 — Chọn 2 mô hình tốt nhất
+
+```
+optimization.select_best_models(results_a, results_b, top_n=2)
+         │
+         ├── Lọc bỏ trivial baselines (0a, 0b, 0c)
+         ├── Tính avg_RMSE = (A_RMSE + B_RMSE) / 2 cho mỗi mô hình
+         └── Chọn top 2 có avg_RMSE thấp nhất
+```
+
+#### 7.2 — Thiết lập bài toán Pymoo
+
+```
+3 Mục tiêu (Tất cả MINIMIZE):
+   f1 = RMSE (valid set)        → Chất lượng dự báo
+   f2 = Train time (giây)       → Thời gian huấn luyện
+   f3 = Model complexity        → Độ phức tạp (ví dụ: n_trees × depth)
+
+Thuật toán: NSGA-II (hoặc NSGA-III)
+   - Quần thể: 200–400
+   - Thế hệ: 100–200
+   - Crossover: SBX (prob=0.9, eta=15)
+   - Mutation: PM (eta=20)
+```
+
+#### 7.3 & 7.4 — Chạy tối ưu hóa cho Baseline A & B
+
+```
+optimization.run_optimization(model_name, X_train, y_train, X_valid, y_valid)
+         │
+         ├── Tạo HyperparamOptProblem (Pymoo Problem)
+         │       - Biến quyết định: hyperparameters liên tục
+         │       - _evaluate(): fit model → đo RMSE + time + complexity
+         │
+         ├── pymoo_minimize(problem, algorithm, n_gen)
+         │       - Tiến hóa quần thể qua các thế hệ
+         │       - Hội tụ về Pareto front
+         │
+         └── Kết quả:
+               - result.F: Mảng (n_pareto, 3) giá trị 3 mục tiêu
+               - result.X: Mảng (n_pareto, n_vars) biến quyết định
+               - pareto_df: DataFrame sắp xếp theo RMSE
+```
+
+#### 7.5 — Trực quan hóa Pareto Front
+
+```
+optimization.plot_pareto_front_3d()   → Scatter 3D: RMSE × Time × Complexity
+optimization.plot_pareto_2d_pairs()   → 3 scatter plots 2D:
+         - RMSE vs Time
+         - RMSE vs Complexity
+         - Time vs Complexity
+```
+
+#### 7.6 — Phân tích đánh đổi
+
+```
+optimization.analyze_tradeoffs(pareto_df, model_name)
+         │
+         ├── 🎯 Nghiệm tốt nhất theo RMSE
+         ├── ⚡ Nghiệm nhanh nhất
+         ├── 🧩 Nghiệm đơn giản nhất
+         ├── 📈 Phạm vi đánh đổi (trade-off range)
+         │       Ví dụ: "Giảm 1 đơn vị RMSE cần ~X giây thêm"
+         └── 🔑 Nghiệm cân bằng (TOPSIS-like compromise)
+               → Params được đề xuất
 ```
 
 ---
@@ -366,7 +441,9 @@ graph LR
     FE --> MD["models.py"]
     MD --> VZ["visualization.py"]
     MD --> CP["comparison.py"]
+    MD --> OP["optimization.py"]
     VZ --> CP
+    CP --> OP
     EDA["eda.py"] --> VZ
     
     style DL fill:#4C72B0,color:#fff
@@ -375,6 +452,7 @@ graph LR
     style VZ fill:#8172B2,color:#fff
     style CP fill:#DD8452,color:#fff
     style EDA fill:#937860,color:#fff
+    style OP fill:#CCB974,color:#fff
 ```
 
 | Module | Input | Output | Gọi bởi |
@@ -385,6 +463,7 @@ graph LR
 | `models` | X_train, y_train, ... | `results_df`, `trained_models` | main.ipynb §5 |
 | `visualization` | y_test, y_pred | Biểu đồ | main.ipynb §5.4, §5.5 |
 | `comparison` | results_a, results_b | Bảng + biểu đồ + kết luận | main.ipynb §6 |
+| `optimization` | X_train/valid, results_a/b | Pareto front + trade-off analysis | main.ipynb §7 |
 
 ---
 
@@ -417,13 +496,18 @@ SV16_PeMSD3_sample_8sensors.csv (48,385 dòng × 6 cột)
   │     → X_train_b, y_train_b, X_valid_b, ...
   │
   ├── [models.train_and_evaluate] × 2 baselines
-  │     → 7 models × fit + predict + evaluate
-  │     → results_a (DataFrame 7×8)
-  │     → results_b (DataFrame 7×8)
-  │     → trained_a, trained_b (dict models + predictions)
+  │     → 10 models × fit + predict(train/valid/test) + evaluate(5 metrics)
+  │     → results_a (DataFrame 10 rows, sắp xếp theo test_RMSE)
+  │     → results_b (DataFrame 10 rows)
+  │     → trained_a, trained_b (dict models + predictions + train_time)
   │     → Lưu .pkl/.pth vào models/
   │
-  └── [comparison.*]
-        → Bảng so sánh + biểu đồ + kết luận tự động
-        → Lưu biểu đồ vào resultImages/
+  ├── [comparison.*]
+  │     → Bảng so sánh + biểu đồ + kết luận tự động
+  │     → Lưu biểu đồ vào resultImages/
+  │
+  └── [optimization.*]
+        → Chọn 2 mô hình tốt nhất trên cả 2 baselines
+        → NSGA-II/III → Pareto front (RMSE × Time × Complexity)
+        → Trực quan hóa 3D + 2D + phân tích đánh đổi
 ```

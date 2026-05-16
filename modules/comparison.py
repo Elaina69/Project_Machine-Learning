@@ -24,14 +24,14 @@ def create_comparison_table(results_a: pd.DataFrame,
     b = results_b.set_index('model')
 
     compare = pd.DataFrame(index=a.index)
-    for metric in ['test_MAE', 'test_RMSE', 'test_MAPE', 'test_R2']:
+    for metric in ['test_MAE', 'test_RMSE', 'test_MAPE', 'test_R2', 'test_MASE']:
         short = metric.replace('test_', '')
         compare[f'A_{short}'] = a[metric] if metric in a.columns else np.nan
         compare[f'B_{short}'] = b[metric] if metric in b.columns else np.nan
 
-    # Xác định baseline nào tốt hơn (MAE thấp hơn = tốt hơn)
+    # Xác định baseline nào tốt hơn (RMSE thấp hơn = tốt hơn)
     compare['better'] = compare.apply(
-        lambda row: 'A' if row.get('A_MAE', np.inf) < row.get('B_MAE', np.inf) else 'B',
+        lambda row: 'A' if row.get('A_RMSE', np.inf) < row.get('B_RMSE', np.inf) else 'B',
         axis=1
     )
     return compare.reset_index()
@@ -76,8 +76,8 @@ def plot_comparison_grouped_bar(results_a: pd.DataFrame, results_b: pd.DataFrame
 
 def plot_comparison_all_metrics(results_a: pd.DataFrame, results_b: pd.DataFrame,
                                 save_dir=None):
-    """Vẽ grouped bar cho tất cả 4 metrics."""
-    for metric in ['test_MAE', 'test_RMSE', 'test_MAPE', 'test_R2']:
+    """Vẽ grouped bar cho tất cả 5 metrics."""
+    for metric in ['test_MAE', 'test_RMSE', 'test_MAPE', 'test_R2', 'test_MASE']:
         if metric in results_a.columns and metric in results_b.columns:
             plot_comparison_grouped_bar(results_a, results_b, metric, save_dir)
 
