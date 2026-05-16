@@ -1,7 +1,12 @@
 """
-Module Models — Định nghĩa, huấn luyện và đánh giá 7 mô hình học máy.
+Module Models — Định nghĩa, huấn luyện và đánh giá 10 mô hình.
 
-7 mô hình:
+3 Trivial Baselines:
+    0a. Seasonal Naive
+    0b. Drift Method
+    0c. Simple Moving Average (SMA)
+
+7 mô hình ML:
     1. Linear Regression
     2. Ridge Regression
     3. K-Nearest Neighbors (KNN)
@@ -184,11 +189,87 @@ class LSTMWrapper:
         return preds
 
 
+# ─── Trivial Baselines ────────────────────────────────────────────────────
+
+class SeasonalNaive:
+    """
+    Seasonal Naive: dự báo = giá trị cùng thời điểm ngày hôm trước.
+    Sử dụng flow_lag_288 nếu có (288 bước × 5min = 1 ngày),
+    fallback về flow_lag_12 (1 giờ) nếu không.
+    Với tabular features, sử dụng cột lag xa nhất có sẵn.
+    """
+    def __init__(self, season_lag_idx=None):
+        self.season_lag_idx = season_lag_idx  # index cột lag xa nhất
+        self.fallback_mean = 0
+
+    def fit(self, X, y):
+        self.fallback_mean = np.mean(y)
+        # Tìm cột lag xa nhất (index cuối cùng trong nhóm lag đầu tiên)
+        # Mặc định dùng cột cuối trong 5 flow_lag features (flow_lag_12 = index 4)
+        if self.season_lag_idx is None:
+            # flow_lag columns nằm ở đầu, cột thứ 5 (index 4) = flow_lag_12
+            self.season_lag_idx = min(4, X.shape[1] - 1)
+        return self
+
+    def predict(self, X):
+        preds = X[:, self.season_lag_idx].copy()
+        mask = np.isnan(preds)
+        preds[mask] = self.fallback_mean
+        return preds
+
+
+class DriftMethod:
+    """
+    Drift Method: dự báo = giá trị gần nhất + trend trung bình.
+    Sử dụng flow_lag_1 và flow_lag_3 để ước lượng drift.
+    """
+    def __init__(self):
+        self.avg_drift = 0
+
+    def fit(self, X, y):
+        # flow_lag_1 = index 0, flow_lag_3 = index 2
+        lag1 = X[:, 0]  # flow_lag_1 = flow tại t-1
+        lag3 = X[:, 2]  # flow_lag_3 = flow tại t-3
+        drifts = (lag1 - lag3) / 2  # trung bình thay đổi mỗi bước
+        self.avg_drift = np.nanmean(drifts)
+        return self
+
+    def predict(self, X):
+        lag1 = X[:, 0]  # flow_lag_1
+        # Dự báo = lag1 + drift × horizon (horizon=3 bước)
+        return lag1 + self.avg_drift * 3
+
+
+class SimpleMovingAverage:
+    """
+    Simple Moving Average: dự báo = trung bình rolling mean.
+    Sử dụng cột flow_roll_mean có sẵn trong features.
+    """
+    def __init__(self, roll_mean_idx=None):
+        self.roll_mean_idx = roll_mean_idx
+        self.fallback_mean = 0
+
+    def fit(self, X, y):
+        self.fallback_mean = np.mean(y)
+        if self.roll_mean_idx is None:
+            # flow_roll_mean_12 nằm ở sau các lag features
+            # Với lag_steps=[1,2,3,6,12], lag_cols=3 → 15 lag features
+            # rolling bắt đầu từ index 15, flow_roll_mean_3=15, mean_6=17, mean_12=19
+            self.roll_mean_idx = min(19, X.shape[1] - 1)
+        return self
+
+    def predict(self, X):
+        preds = X[:, self.roll_mean_idx].copy()
+        mask = np.isnan(preds)
+        preds[mask] = self.fallback_mean
+        return preds
+
+
 # ─── Model Factory ────────────────────────────────────────────────────────
 
 def get_models(config: dict = None) -> dict:
     """
-    Trả về dict {tên: model_instance} cho 7 mô hình.
+    Trả về dict {tên: model_instance} cho 10 mô hình (3 trivial + 7 ML).
 
     config có thể chứa hyperparameters tùy chỉnh:
         config['model_params']['random_forest'] = {'n_estimators': 200}
@@ -199,6 +280,9 @@ def get_models(config: dict = None) -> dict:
     rs = config.get('random_state', 42)
 
     models = {
+        '0a_SeasonalNaive': SeasonalNaive(),
+        '0b_DriftMethod': DriftMethod(),
+        '0c_SMA': SimpleMovingAverage(),
         '1_LinearRegression': LinearRegression(
             **params.get('linear_regression', {})
         ),

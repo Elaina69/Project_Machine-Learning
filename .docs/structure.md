@@ -19,7 +19,7 @@ DoAn_MachineLearning_UTT/
 │   ├── data_loader.py                 # Load & parse CSV
 │   ├── eda.py                         # Thống kê mô tả, EDA, visualizations
 │   ├── feature_engineering.py         # Tạo lag, rolling, time features
-│   ├── models.py                      # Định nghĩa, huấn luyện & đánh giá 7 mô hình
+│   ├── models.py                      # Định nghĩa, huấn luyện & đánh giá 10 mô hình (3 trivial + 7 ML)
 │   ├── visualization.py              # Vẽ biểu đồ, charts
 │   └── comparison.py                 # So sánh 2 baselines
 ├── models/                            # Lưu mô hình đã train (.pkl, .joblib, .pth)

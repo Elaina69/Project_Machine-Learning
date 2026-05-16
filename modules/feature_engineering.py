@@ -34,11 +34,11 @@ def add_lag_features(df: pd.DataFrame, lag_steps: list = None,
     Tạo lag features, group theo sensor_id (bắt buộc).
 
     Args:
-        lag_steps: [1, 2, 3] tương ứng t-5min, t-10min, t-15min
+        lag_steps: [1, 2, 3, 6, 12] tương ứng t-5min, t-10min, t-15min, t-30min, t-1h
         columns: ['flow', 'speed', 'occupancy']
     """
     if lag_steps is None:
-        lag_steps = [1, 2, 3]
+        lag_steps = [1, 2, 3, 6, 12]
     if columns is None:
         columns = ['flow', 'speed', 'occupancy']
 
@@ -59,12 +59,12 @@ def add_rolling_features(df: pd.DataFrame, windows: list = None,
 
     Args:
         windows: [3, 6, 12] tương ứng 15min, 30min, 1h
-        columns: ['flow', 'speed']
+        columns: ['flow', 'speed', 'occupancy']
     """
     if windows is None:
         windows = [3, 6, 12]
     if columns is None:
-        columns = ['flow', 'speed']
+        columns = ['flow', 'speed', 'occupancy']
 
     df = df.copy()
     for col in columns:
@@ -102,13 +102,13 @@ def prepare_all_features(df: pd.DataFrame, config: dict) -> pd.DataFrame:
     df = add_time_features(df)
     df = add_lag_features(
         df,
-        lag_steps=config.get('lag_steps', [1, 2, 3]),
+        lag_steps=config.get('lag_steps', [1, 2, 3, 6, 12]),
         columns=config.get('lag_columns', ['flow', 'speed', 'occupancy']),
     )
     df = add_rolling_features(
         df,
         windows=config.get('rolling_windows', [3, 6, 12]),
-        columns=config.get('rolling_columns', ['flow', 'speed']),
+        columns=config.get('rolling_columns', ['flow', 'speed', 'occupancy']),
     )
     df = add_target(df, horizon=config.get('target_horizon', 3))
 
@@ -121,10 +121,10 @@ def prepare_all_features(df: pd.DataFrame, config: dict) -> pd.DataFrame:
 
 def get_feature_columns(config: dict) -> list:
     """Trả về danh sách tên cột feature dùng cho modeling."""
-    lag_steps = config.get('lag_steps', [1, 2, 3])
+    lag_steps = config.get('lag_steps', [1, 2, 3, 6, 12])
     lag_cols = config.get('lag_columns', ['flow', 'speed', 'occupancy'])
     roll_windows = config.get('rolling_windows', [3, 6, 12])
-    roll_cols = config.get('rolling_columns', ['flow', 'speed'])
+    roll_cols = config.get('rolling_columns', ['flow', 'speed', 'occupancy'])
 
     features = []
     # Lag features

@@ -11,7 +11,7 @@
 | **Nhóm bài** | Nhóm 2 — Dữ liệu PeMSD (flow, speed, occupancy) |
 | **Đề bài** | So sánh dự báo flow giữa **hai tập sensor** (2 baselines) trong PeMSD3 |
 | **Dataset** | `SV16_PeMSD3_sample_8sensors.csv` |
-| **Yêu cầu mô hình** | So sánh 2 baselines × **7 mô hình** học máy (tối thiểu 5, mở rộng 7–10) |
+| **Yêu cầu mô hình** | So sánh 2 baselines × **10 mô hình** (3 trivial + 7 ML, tối thiểu 5, mở rộng 7–10) |
 | **Bài toán** | Time-series Regression — dự báo flow tương lai |
 | **Sản phẩm cuối** | `main.ipynb` (phân tích + huấn luyện) + `demo.ipynb` (Dashboard trực quan) |
 
@@ -119,12 +119,13 @@ Output:  __datasets-clean/
   - `time_slot` (đêm/sáng/trưa/chiều/tối)
 - [ ] Xử lý missing values (nếu có): forward fill hoặc interpolation
 - [ ] **Tạo lag features** (bắt buộc group theo `sensor_id`):
-  - `flow_lag_1` (t-5min), `flow_lag_2` (t-10min), `flow_lag_3` (t-15min)
-  - `speed_lag_1`, `speed_lag_2`, `speed_lag_3`
-  - `occupancy_lag_1`, `occupancy_lag_2`, `occupancy_lag_3`
+  - `flow_lag_1` (t-5min), `flow_lag_2` (t-10min), `flow_lag_3` (t-15min), `flow_lag_6` (t-30min), `flow_lag_12` (t-1h)
+  - `speed_lag_1`, `speed_lag_2`, `speed_lag_3`, `speed_lag_6`, `speed_lag_12`
+  - `occupancy_lag_1`, `occupancy_lag_2`, `occupancy_lag_3`, `occupancy_lag_6`, `occupancy_lag_12`
 - [ ] Tạo rolling features (window 3, 6, 12 → 15min, 30min, 1h):
-  - `flow_rolling_mean_6`, `flow_rolling_std_6`
-  - `speed_rolling_mean_6`
+  - `flow_roll_mean_3/6/12`, `flow_roll_std_3/6/12`
+  - `speed_roll_mean_3/6/12`, `speed_roll_std_3/6/12`
+  - `occupancy_roll_mean_3/6/12`, `occupancy_roll_std_3/6/12`
 - [ ] **Target variable**: `flow_target` = flow tại **t+3** (15 phút sau, 3 bước × 5 phút)
 - [ ] Drop rows có NaN do lag/rolling/target shift
 - [ ] Chia dữ liệu thành **Baseline A** và **Baseline B** theo sensor groups
@@ -133,7 +134,7 @@ Output:  __datasets-clean/
 
 ---
 
-## 6. Xây dựng mô hình — 7 mô hình cho mỗi Baseline
+## 6. Xây dựng mô hình — 10 mô hình cho mỗi Baseline
 
 ```
 Module: modules/models.py → gọi trong main.ipynb mục 5
@@ -143,18 +144,36 @@ Module: modules/models.py → gọi trong main.ipynb mục 5
 
 **Features đầu vào (X):**
 ```
-flow_lag_1, flow_lag_2, flow_lag_3,
-speed_lag_1, speed_lag_2, speed_lag_3,
-occupancy_lag_1, occupancy_lag_2, occupancy_lag_3,
-flow_rolling_mean_6, flow_rolling_std_6, speed_rolling_mean_6,
+# Lag features (15 cột): 3 cols × 5 lags
+flow_lag_1, flow_lag_2, flow_lag_3, flow_lag_6, flow_lag_12,
+speed_lag_1, speed_lag_2, speed_lag_3, speed_lag_6, speed_lag_12,
+occupancy_lag_1, occupancy_lag_2, occupancy_lag_3, occupancy_lag_6, occupancy_lag_12,
+
+# Rolling features (18 cột): 3 cols × 3 windows × 2 stats
+flow_roll_mean_3, flow_roll_std_3, flow_roll_mean_6, flow_roll_std_6, flow_roll_mean_12, flow_roll_std_12,
+speed_roll_mean_3, speed_roll_std_3, speed_roll_mean_6, speed_roll_std_6, speed_roll_mean_12, speed_roll_std_12,
+occupancy_roll_mean_3, occupancy_roll_std_3, occupancy_roll_mean_6, occupancy_roll_std_6, occupancy_roll_mean_12, occupancy_roll_std_12,
+
+# Time features (3 cột)
 hour, weekday, is_weekend
 ```
+**Tổng: 36 features**
 
 **Target (y):** `flow_target` (flow sau 15 phút)
 
-### 6.2 Danh sách 7 mô hình
+### 6.2 Danh sách 10 mô hình
 
-> Tất cả 7 mô hình đều phù hợp cho bài toán **time-series regression** dự báo flow giao thông.
+> 3 trivial baselines dùng làm **mốc so sánh tối thiểu** — nếu mô hình ML không thắng được trivial baseline thì cần xem lại.
+
+#### Trivial Baselines (3 mô hình)
+
+| # | Mô hình | Loại | Cách hoạt động |
+|---|---|---|---|
+| 0a | **Seasonal Naive** | Naive | Dự báo = flow tại cùng thời điểm 1h trước (flow_lag_12) |
+| 0b | **Drift Method** | Naive | Dự báo = flow gần nhất + xu hướng trung bình (drift) |
+| 0c | **Simple Moving Average** | Naive | Dự báo = trung bình trượt flow 1h gần nhất |
+
+#### ML Models (7 mô hình)
 
 | # | Mô hình | Loại | Lý do phù hợp cho Time Series |
 |---|---|---|---|
@@ -169,10 +188,10 @@ hour, weekday, is_weekend
 ### 6.3 Quy trình cho MỖI Baseline (A và B)
 
 ```
-Tổng: 2 baselines × 7 mô hình = 14 lần huấn luyện + đánh giá
+Tổng: 2 baselines × 10 mô hình = 20 lần huấn luyện + đánh giá
 ```
 
-- [ ] Huấn luyện 7 mô hình trên tập **Train**
+- [ ] Huấn luyện 10 mô hình trên tập **Train**
 - [ ] Tune hyperparameters trên tập **Validation**
 - [ ] Đánh giá cuối cùng trên tập **Test**
 - [ ] Lưu mô hình đã train vào `models/`
@@ -376,13 +395,13 @@ joblib                    # Lưu mô hình
 - [ ] Báo cáo missing data rate cho mỗi sensor
 
 ### Xây dựng mô hình
-- [ ] 7 mô hình cho Baseline A (LR, Ridge, KNN, DT, RF, XGB, LSTM)
-- [ ] 7 mô hình cho Baseline B (cùng 7 mô hình)
-- [ ] Feature engineering đầy đủ (lag + time + rolling)
+- [ ] 10 mô hình cho Baseline A (SeasonalNaive, Drift, SMA, LR, Ridge, KNN, DT, RF, XGB, LSTM)
+- [ ] 10 mô hình cho Baseline B (cùng 10 mô hình)
+- [ ] Feature engineering đầy đủ (lag[1,2,3,6,12] + time + rolling[3,6,12] cho flow/speed/occupancy)
 - [ ] Hold-out Split đúng: Train 70% / Valid 15% / Test 15% (theo thời gian)
 
 ### Đánh giá & So sánh
-- [ ] Bảng tổng hợp metrics cho 2 baselines × 7 mô hình (= 14 dòng)
+- [ ] Bảng tổng hợp metrics cho 2 baselines × 10 mô hình (= 20 dòng)
 - [ ] Biểu đồ so sánh trực quan
 - [ ] Nhận xét, kết luận chi tiết về sự khác biệt giữa 2 baselines
 

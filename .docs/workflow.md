@@ -62,13 +62,13 @@ CONFIG = {
     'baseline_b_sensors':  ['PEMSD3_011', ..., 'PEMSD3_014'],  # 4 sensors
     'train_ratio':         0.70,
     'valid_ratio':         0.15,
-    'lag_steps':           [1, 2, 3],         # 3 bước lag
+    'lag_steps':           [1, 2, 3, 6, 12],  # 5 bước lag
     'lag_columns':         ['flow', 'speed', 'occupancy'],
     'rolling_windows':     [3, 6, 12],        # 15min, 30min, 1h
-    'rolling_columns':     ['flow', 'speed'],
+    'rolling_columns':     ['flow', 'speed', 'occupancy'],
     'target_horizon':      3,                 # dự báo 15 phút
     'random_state':        42,
-    'model_params': { ... },                  # hyperparams cho 7 mô hình
+    'model_params': { ... },                  # hyperparams cho 10 mô hình
 }
 ```
 
@@ -118,17 +118,19 @@ fe.prepare_all_features(df_raw, CONFIG)
          │
          ├── 2. add_lag_features(group by sensor_id)
          │       Với mỗi col ∈ [flow, speed, occupancy]:
-         │         col_lag_1 = shift(1)    → giá trị tại t-5min
-         │         col_lag_2 = shift(2)    → giá trị tại t-10min
-         │         col_lag_3 = shift(3)    → giá trị tại t-15min
+         │         col_lag_1  = shift(1)    → giá trị tại t-5min
+         │         col_lag_2  = shift(2)    → giá trị tại t-10min
+         │         col_lag_3  = shift(3)    → giá trị tại t-15min
+         │         col_lag_6  = shift(6)    → giá trị tại t-30min
+         │         col_lag_12 = shift(12)   → giá trị tại t-1h
          │       ⚠️ BẮT BUỘC groupby('sensor_id') trước khi shift
-         │       → Tạo 9 cột lag (3 cols × 3 lags)
+         │       → Tạo 15 cột lag (3 cols × 5 lags)
          │
          ├── 3. add_rolling_features(group by sensor_id)
-         │       Với mỗi col ∈ [flow, speed], window ∈ [3, 6, 12]:
+         │       Với mỗi col ∈ [flow, speed, occupancy], window ∈ [3, 6, 12]:
          │         col_roll_mean_w = rolling(w).mean()
          │         col_roll_std_w  = rolling(w).std()
-         │       → Tạo 12 cột rolling (2 cols × 3 windows × 2 stats)
+         │       → Tạo 18 cột rolling (3 cols × 3 windows × 2 stats)
          │
          ├── 4. add_target(horizon=3)
          │       df['flow_target'] = groupby('sensor_id')['flow'].shift(-3)
@@ -136,17 +138,17 @@ fe.prepare_all_features(df_raw, CONFIG)
          │
          └── 5. dropna()
                  Xóa các dòng NaN do lag/rolling/target shift
-                 → df_featured: ~45K dòng × ~28 cột
+                 → df_featured: ~44K dòng × ~40 cột
 ```
 
-**Tổng cộng features cho modeling (24 features):**
+**Tổng cộng features cho modeling (36 features):**
 
 | Nhóm | Cột | Số lượng |
 |---|---|---|
-| Lag features | `flow_lag_1..3`, `speed_lag_1..3`, `occupancy_lag_1..3` | 9 |
-| Rolling features | `flow_roll_mean_3/6/12`, `flow_roll_std_3/6/12`, `speed_roll_mean_3/6/12`, `speed_roll_std_3/6/12` | 12 |
+| Lag features | `flow_lag_1..12`, `speed_lag_1..12`, `occupancy_lag_1..12` | 15 |
+| Rolling features | `flow_roll_mean/std_3/6/12`, `speed_roll_mean/std_3/6/12`, `occupancy_roll_mean/std_3/6/12` | 18 |
 | Time features | `hour`, `weekday`, `is_weekend` | 3 |
-| **Tổng** | | **24** |
+| **Tổng** | | **36** |
 | **Target** | `flow_target` | 1 |
 
 #### 4.4 — Chia Baseline A & B
@@ -177,7 +179,7 @@ fe.holdout_split(df_baseline_a, train=0.70, valid=0.15)
 
 **Sau đó tách X, y:**
 ```python
-X_train_a = train_a[FEATURE_COLS].values   # numpy array (n, 24)
+X_train_a = train_a[FEATURE_COLS].values   # numpy array (n, 36)
 y_train_a = train_a['flow_target'].values  # numpy array (n,)
 # tương tự cho valid, test, baseline B
 ```
@@ -188,12 +190,17 @@ y_train_a = train_a['flow_target'].values  # numpy array (n,)
 
 ### Bước 5 → Xây dựng mô hình Baseline
 
-#### 5.1 & 5.2 — Huấn luyện 7 mô hình cho mỗi Baseline
+#### 5.1 & 5.2 — Huấn luyện 10 mô hình cho mỗi Baseline
 
 ```
 models.get_models(CONFIG)
          │
-         └── Tạo dict 7 mô hình:
+         └── Tạo dict 10 mô hình:
+               ── Trivial Baselines ──
+               0a_SeasonalNaive    → SeasonalNaive()   (dùng flow_lag_12)
+               0b_DriftMethod      → DriftMethod()     (flow_lag_1 + trend)
+               0c_SMA              → SimpleMovingAverage() (flow_roll_mean_12)
+               ── ML Models ──
                1_LinearRegression  → sklearn LinearRegression()
                2_Ridge             → sklearn Ridge(alpha=1.0)
                3_KNN               → sklearn KNeighborsRegressor(n=10, weights='distance')
@@ -206,13 +213,17 @@ models.train_and_evaluate(models, X_train, y_train, X_valid, y_valid, X_test, y_
          │
          │   Với MỖI mô hình:
          │     ┌──────────────────────────────────────────────┐
+         │     │ Trivial baselines (0a-0c):                   │
+         │     │   model.fit(X_train, y_train)                │
+         │     │   → Chỉ lưu thông số đơn giản (mean, index) │
+         │     ├──────────────────────────────────────────────┤
          │     │ Mô hình sklearn (1-6):                      │
          │     │   model.fit(X_train, y_train)                │
          │     │   → Sử dụng trực tiếp numpy arrays          │
          │     ├──────────────────────────────────────────────┤
          │     │ LSTM (7):                                    │
          │     │   1. StandardScaler.fit_transform(X_train)   │
-         │     │   2. Reshape → (n, 1, 24) cho LSTM input     │
+         │     │   2. Reshape → (n, 1, 36) cho LSTM input     │
          │     │   3. Tạo DataLoader (batch_size=256)         │
          │     │   4. Train loop (max 50 epochs):             │
          │     │      - Forward pass qua LSTMNet              │
@@ -225,14 +236,14 @@ models.train_and_evaluate(models, X_train, y_train, X_valid, y_valid, X_test, y_
          │     → model.predict(X_test)
          │     → evaluate(y_test, y_pred) → {MAE, RMSE, MAPE, R²}
          │
-         ├── results_df: DataFrame metrics (7 dòng × 8 cột metrics)
+         ├── results_df: DataFrame metrics (10 dòng × 8 cột metrics)
          └── trained_models: dict chứa {model, y_pred_test, metrics}
 ```
 
 **LSTM Architecture (`LSTMNet`):**
 ```
-Input (batch, 1, 24)
-  → nn.LSTM(input=24, hidden=64, layers=2, dropout=0.2)
+Input (batch, 1, 36)
+  → nn.LSTM(input=36, hidden=64, layers=2, dropout=0.2)
   → Lấy output timestep cuối [:, -1, :]  → (batch, 64)
   → nn.Linear(64, 32) → ReLU → Dropout(0.2)
   → nn.Linear(32, 1) → squeeze
