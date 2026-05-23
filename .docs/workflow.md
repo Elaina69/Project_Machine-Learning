@@ -362,13 +362,21 @@ Thuật toán: NSGA-II (hoặc NSGA-III)
 #### 7.3 & 7.4 — Chạy tối ưu hóa cho Baseline A & B
 
 ```
-optimization.run_optimization(model_name, X_train, y_train, X_valid, y_valid)
+optimization.run_optimization(model_name, X_train, y_train, X_valid, y_valid, baseline_tag=...)
          │
-         ├── Tạo HyperparamOptProblem (Pymoo Problem)
+         ├── 1. Khởi tạo/Resume: pymooCheckpoint/optim_checkpoint_{baseline_tag}_{model_name}.pkl
+         │       - Đọc checkpoint của baseline cụ thể (ví dụ: tag 'A' hoặc 'B')
+         │       - Nếu đã hoàn thành >= n_gen: Bỏ qua huấn luyện, load và trả về kết quả ngay.
+         │       - Nếu chưa hoàn thành: Tiến hành RESUME tiếp tục tiến hóa từ thế hệ gần nhất.
+         │
+         ├── 2. Tạo HyperparamOptProblem (Pymoo Problem)
          │       - Biến quyết định: hyperparameters liên tục
          │       - _evaluate(): fit model → đo RMSE + time + complexity
          │
-         ├── pymoo_minimize(problem, algorithm, n_gen)
+         ├── 3. CheckpointCallback: Lưu tiến trình tiến hóa theo chu kỳ (mặc định mỗi thế hệ)
+         │       - Ghi lại trạng thái quần thể và thời gian chạy vào file checkpoint tương ứng.
+         │
+         ├── 4. pymoo_minimize(problem, algorithm, n_gen)
          │       - Tiến hóa quần thể qua các thế hệ
          │       - Hội tụ về Pareto front
          │

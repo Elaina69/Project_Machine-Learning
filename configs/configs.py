@@ -41,3 +41,10 @@ CONFIG = {
         },
     },
 }
+
+OPTIM_CONFIG = {
+    'pop_size': 300,        # Kích thước quần thể (200-400), tăng từ 200 lên 300
+    'n_gen': 100,           # Số thế hệ (100-200), Giảm từ 100 xuống 50
+    'algorithm': 'nsga2',   # 'nsga2' hoặc 'nsga3'
+    'random_state': 69,
+}

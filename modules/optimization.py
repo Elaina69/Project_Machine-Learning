@@ -36,6 +36,9 @@ from pymoo.core.callback import Callback
 
 import matplotlib.pyplot as plt
 
+import sys
+from configs import pymooSearchSpaces
+sys.modules['pymooSearchSpaces'] = pymooSearchSpaces
 
 from configs.pymooSearchSpaces import SEARCH_SPACES
 
@@ -220,9 +223,20 @@ def select_best_models(results_a, results_b, top_n=2):
 
 # ─── Checkpoint helpers ───────────────────────────────────────────────────
 
-def _get_checkpoint_path(checkpoint_dir, model_name):
-    """Tạo đường dẫn file checkpoint cho 1 model."""
+def _get_checkpoint_path(checkpoint_dir, model_name, baseline_tag=None):
+    """Tạo đường dẫn file checkpoint cho 1 model + baseline.
+
+    Args:
+        checkpoint_dir: Thư mục lưu checkpoint.
+        model_name: Tên mô hình (VD: '5_RandomForest').
+        baseline_tag: Nhãn baseline (VD: 'BaselineA', 'BaselineB').
+            Nếu None, chỉ dùng model_name → NGUY HIỂM khi chạy nhiều baseline!
+    """
     safe_name = model_name.replace('/', '_').replace(' ', '_')
+
+    if baseline_tag:
+        safe_tag = baseline_tag.replace('/', '_').replace(' ', '_')
+        return Path(checkpoint_dir) / f"optim_checkpoint_{safe_tag}_{safe_name}.pkl"
     return Path(checkpoint_dir) / f"optim_checkpoint_{safe_name}.pkl"
 
 
@@ -261,11 +275,23 @@ def _load_checkpoint(path):
 
 # ─── Run Optimization (với checkpoint/resume) ─────────────────────────────
 
-def run_optimization(model_name, X_train, y_train, X_valid, y_valid,
-                     pop_size=200, n_gen=100, algorithm='nsga2',
-                     random_state=42, verbose=True,
-                     train_subsample_ratio=0.5, n_parallel_jobs=-1,
-                     checkpoint_dir='pymooCheckpoint', checkpoint_interval=1):
+def run_optimization(
+        model_name, 
+        X_train, 
+        y_train, 
+        X_valid, 
+        y_valid,      
+        pop_size = 200, 
+        n_gen = 100, 
+        algorithm = 'nsga2',
+        random_state = 42, 
+        verbose = True,  
+        train_subsample_ratio = 0.5, 
+        n_parallel_jobs = -1,
+        checkpoint_dir = 'pymooCheckpoint', 
+        checkpoint_interval = 1,
+        baseline_tag = None
+    ):
     """Chạy tối ưu hóa đa mục tiêu cho 1 mô hình, hỗ trợ lưu/khôi phục tiến trình.
 
     Args:
@@ -279,6 +305,9 @@ def run_optimization(model_name, X_train, y_train, X_valid, y_valid,
             Nếu đã có checkpoint, tự động resume từ thế hệ đã lưu.
             Đặt None để tắt checkpoint.
         checkpoint_interval: Lưu checkpoint mỗi N thế hệ (mặc định: 1 = mỗi thế hệ).
+        baseline_tag: Nhãn baseline (VD: 'BaselineA', 'BaselineB').
+            QUAN TRỌNG: Phải truyền giá trị khác nhau cho mỗi baseline
+            để checkpoint không bị trùng lẫn nhau.
 
     Returns:
         result: Pymoo Result object
@@ -305,12 +334,13 @@ def run_optimization(model_name, X_train, y_train, X_valid, y_valid,
     problem = None
 
     if checkpoint_dir is not None:
-        checkpoint_path = _get_checkpoint_path(checkpoint_dir, model_name)
+        checkpoint_path = _get_checkpoint_path(checkpoint_dir, model_name, baseline_tag)
         ckpt = _load_checkpoint(checkpoint_path)
         if ckpt is not None:
             resumed_gen = ckpt['n_gen_completed']
             if resumed_gen >= n_gen:
-                print(f"\n✅ Checkpoint cho {model_name} đã hoàn tất "
+                tag_info = f" [{baseline_tag}]" if baseline_tag else ""
+                print(f"\n✅ Checkpoint cho {model_name}{tag_info} đã hoàn tất "
                       f"{resumed_gen}/{n_gen} thế hệ. Không cần chạy lại.")
                 # Trả về kết quả từ algorithm đã lưu
                 algo_saved = ckpt['algorithm']
@@ -321,7 +351,9 @@ def run_optimization(model_name, X_train, y_train, X_valid, y_valid,
                     algo_saved, problem_saved, ckpt['elapsed_time']
                 )
             else:
-                print(f"\n🔄 RESUME từ checkpoint: {resumed_gen}/{n_gen} thế hệ đã xong.")
+                tag_info = f" [{baseline_tag}]" if baseline_tag else ""
+                print(f"\n🔄 RESUME {model_name}{tag_info} từ checkpoint: "
+                      f"{resumed_gen}/{n_gen} thế hệ đã xong.")
                 algo = ckpt['algorithm']
                 problem = algo.problem
                 problem.eval_history = ckpt['eval_history']
@@ -394,7 +426,8 @@ def run_optimization(model_name, X_train, y_train, X_valid, y_valid,
 
     # ── In thông tin ──
     print(f"\n{'='*60}")
-    print(f"🔍 TỐI ƯU HÓA {model_name}")
+    tag_info = f" [{baseline_tag}]" if baseline_tag else ""
+    print(f"🔍 TỐI ƯU HÓA {model_name}{tag_info}")
     print(f"   Thuật toán: {algorithm.upper() if isinstance(algorithm, str) else type(algo).__name__}")
     print(f"   Quần thể: {pop_size} | Thế hệ: {n_gen} "
           f"({'resume ' + str(resumed_gen) + '→' + str(n_gen) if resumed else 'từ đầu'})")
