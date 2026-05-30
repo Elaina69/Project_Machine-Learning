@@ -11,6 +11,8 @@ graph TD
     B --> B4["models.py"]
     B --> B5["visualization.py"]
     B --> B6["comparison.py"]
+    B --> B7["optimization.py"]
+    B --> B8["stability.py"]
 
     A -->|đọc| C["__datasets-raw/SV16_...csv"]
     A -->|ghi| D["__datasets-clean/*.csv"]
@@ -22,7 +24,7 @@ graph TD
     G -->|import| B
 ```
 
-Toàn bộ logic xử lý nằm trong `modules/`. Notebook `main.ipynb` chỉ import và gọi hàm theo đúng 6 bước. Notebook `demo.ipynb` chạy sau, load kết quả đã lưu để hiển thị dashboard.
+Toàn bộ logic xử lý nằm trong `modules/`. Notebook `main.ipynb` chỉ import và gọi hàm theo đúng 9 bước. Notebook `demo.ipynb` chạy sau, load kết quả đã lưu để hiển thị dashboard.
 
 ---
 
@@ -412,6 +414,73 @@ optimization.analyze_tradeoffs(pareto_df, model_name)
 
 ---
 
+### Bước 8 → Chứng minh độ ổn định bằng Monte Carlo
+
+```
+stability.params_from_solution(model_name, best_solution)
+         │
+         └── Trích params từ nghiệm cân bằng của Pareto front
+
+stability.run_monte_carlo(model_name, params, X_train, y_train, X_test, y_test,
+                          X_valid=X_valid, y_valid=y_valid, seeds=...)
+         │
+         ├── Giữ nguyên split train/valid/test theo thời gian
+         ├── Fit lại model trên train+valid vì hyperparameters đã được chọn
+         ├── Chỉ thay đổi random_state của thuật toán/model qua mỗi run
+         ├── Dự đoán trên test cố định
+         └── Ghi lại MAE, RMSE, MAPE, R², MASE, train_time
+```
+
+Notebook chạy cho 4 trường hợp sau tối ưu: 2 mô hình tốt nhất × Baseline A/B.
+
+Trực quan hóa:
+
+```
+stability.plot_monte_carlo_boxplot()  → Boxplot RMSE qua các random_state
+stability.plot_monte_carlo_kde()      → Histogram + KDE
+stability.plot_monte_carlo_ci()       → Mean RMSE + khoảng tin cậy 95%
+```
+
+Giải thích quan trọng: Monte Carlo không được đổi random_state của bước chia dữ liệu vì time series phải giữ thứ tự thời gian. Random split có thể đưa dữ liệu tương lai vào train và làm sai lệch đánh giá. Monte Carlo ở đây đo độ nhạy của thuật toán sau tối ưu, không đo độ ngẫu nhiên của split.
+
+---
+
+### Bước 9 → Chứng minh độ ổn định bằng kỹ thuật trượt thời gian
+
+```
+stability.create_time_sliding_folds(df, train_ratio=0.60,
+                                    test_ratio=0.10,
+                                    step_ratio=0.05,
+                                    n_folds=5)
+         │
+         ├── Fold 1: Train 0-60%,  Test 60-70%
+         ├── Fold 2: Train 5-65%,  Test 65-75%
+         ├── Fold 3: Train 10-70%, Test 70-80%
+         ├── Fold 4: Train 15-75%, Test 75-85%
+         └── Fold 5: Train 20-80%, Test 80-90%
+
+stability.run_time_sliding_validation()
+         │
+         ├── Tạo fold per sensor, luôn sort theo timestamp
+         ├── Huấn luyện model với params tối ưu trên từng train window
+         ├── Đánh giá trên test window ngay phía sau
+         └── Trả về RMSE/MAE/MAPE/R²/MASE theo fold
+```
+
+Kết luận ổn định:
+
+```
+stability.summarize_time_sliding()
+         │
+         ├── Tính RMSE mean/std/min/max/range
+         ├── Tính RMSE_cv_% = std / mean × 100
+         └── stable_by_cv=True nếu CV <= stable_cv_threshold (mặc định 10%)
+```
+
+Nếu đường `time_sliding_rmse.png` gần nằm ngang và `RMSE_cv_%` thấp, bộ dữ liệu được xem là ổn định theo thời gian đối với bài toán dự báo flow. Nếu có fold tăng RMSE đột biến, cần kiểm tra giai đoạn thời gian đó vì có thể xuất hiện biến động giao thông bất thường hoặc lỗi cảm biến.
+
+---
+
 ## Luồng thực thi trong `demo.ipynb`
 
 ```
@@ -450,6 +519,7 @@ graph LR
     MD --> VZ["visualization.py"]
     MD --> CP["comparison.py"]
     MD --> OP["optimization.py"]
+    OP --> ST["stability.py"]
     VZ --> CP
     CP --> OP
     EDA["eda.py"] --> VZ
@@ -472,6 +542,7 @@ graph LR
 | `visualization` | y_test, y_pred | Biểu đồ | main.ipynb §5.4, §5.5 |
 | `comparison` | results_a, results_b | Bảng + biểu đồ + kết luận | main.ipynb §6 |
 | `optimization` | X_train/valid, results_a/b | Pareto front + trade-off analysis | main.ipynb §7 |
+| `stability` | Pareto params, train/valid/test, df baseline | Monte Carlo summary, time sliding summary, biểu đồ ổn định | main.ipynb §8, §9 |
 
 ---
 
@@ -487,8 +558,8 @@ SV16_PeMSD3_sample_8sensors.csv (48,385 dòng × 6 cột)
   │     → biểu đồ + thống kê (không biến đổi data)
   │
   ├── [fe.prepare_all_features]
-  │     → df_featured (~45K × ~28 cột)
-  │     ↓ thêm: 4 time + 9 lag + 12 rolling + 1 target, bỏ NaN
+  │     → df_featured (~45K dòng, gồm dữ liệu gốc + features + target)
+  │     ↓ thêm: 4 time + 15 lag + 18 rolling + 1 target, bỏ NaN
   │
   ├── [data_loader.split_baselines]
   │     → df_baseline_a (~22K dòng)
@@ -499,7 +570,7 @@ SV16_PeMSD3_sample_8sensors.csv (48,385 dòng × 6 cột)
   │     → Baseline B: train_b / valid_b / test_b
   │     → Lưu 6 CSV vào __datasets-clean/
   │
-  ├── [.values] tách X (24 features) và y (flow_target)
+  ├── [.values] tách X (36 features) và y (flow_target)
   │     → X_train_a, y_train_a, X_valid_a, ...
   │     → X_train_b, y_train_b, X_valid_b, ...
   │
@@ -514,8 +585,15 @@ SV16_PeMSD3_sample_8sensors.csv (48,385 dòng × 6 cột)
   │     → Bảng so sánh + biểu đồ + kết luận tự động
   │     → Lưu biểu đồ vào resultImages/
   │
-  └── [optimization.*]
-        → Chọn 2 mô hình tốt nhất trên cả 2 baselines
-        → NSGA-II/III → Pareto front (RMSE × Time × Complexity)
-        → Trực quan hóa 3D + 2D + phân tích đánh đổi
+  ├── [optimization.*]
+  │     → Chọn 2 mô hình tốt nhất trên cả 2 baselines
+  │     → NSGA-II/III → Pareto front (RMSE × Time × Complexity)
+  │     → Trực quan hóa 3D + 2D + phân tích đánh đổi
+  │
+  └── [stability.*]
+        → Lấy params từ nghiệm cân bằng sau Pymoo
+        → Monte Carlo cho 4 mô hình tối ưu, giữ split thời gian cố định
+        → Vẽ boxplot, KDE, CI 95%
+        → Time sliding 5 fold: train 60%, test 10%, shift 5%
+        → Kết luận độ ổn định dữ liệu qua RMSE/CV
 ```

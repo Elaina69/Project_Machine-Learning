@@ -239,7 +239,51 @@ Module: modules/comparison.py → gọi trong main.ipynb mục 6
 
 ---
 
-## 8. Cấu trúc chạy trong `main.ipynb`
+## 8. Kiểm định độ ổn định sau tối ưu Pymoo
+
+```
+Module: modules/stability.py → gọi trong main.ipynb mục 8 và 9
+```
+
+### 8.1 Monte Carlo stability
+
+Sau khi Pymoo trả về Pareto front, notebook chọn nghiệm cân bằng (compromise solution) cho từng mô hình được tối ưu. Với 2 mô hình tốt nhất × 2 baseline, ta có **4 trường hợp mô hình tối ưu** cần kiểm định:
+
+| Trường hợp | Baseline | Mô hình |
+|---|---|---|
+| 1 | Baseline A | Mô hình tốt #1 sau Pymoo |
+| 2 | Baseline A | Mô hình tốt #2 sau Pymoo |
+| 3 | Baseline B | Mô hình tốt #1 sau Pymoo |
+| 4 | Baseline B | Mô hình tốt #2 sau Pymoo |
+
+Quy tắc bắt buộc:
+- Giữ nguyên split train/valid/test theo thời gian.
+- Không dùng `train_test_split(shuffle=True)`.
+- Chỉ thay đổi `random_state` của thuật toán/model để kiểm tra độ nhạy do tính ngẫu nhiên huấn luyện.
+- Sau khi hyperparameters đã được chọn, model được fit lại trên train+valid và đánh giá trên test cố định.
+
+Biểu đồ cần có:
+- Boxplot RMSE qua các lần chạy Monte Carlo.
+- Histogram/phân phối tần suất có đường KDE.
+- Mean RMSE và khoảng tin cậy 95%.
+
+### 8.2 Time sliding stability
+
+Dùng kỹ thuật trượt thời gian để chứng minh bộ dữ liệu ổn định qua các giai đoạn khác nhau:
+
+| Fold | Train | Test |
+|---|---|---|
+| 1 | 0-60% | 60-70% |
+| 2 | 5-65% | 65-75% |
+| 3 | 10-70% | 70-80% |
+| 4 | 15-75% | 75-85% |
+| 5 | 20-80% | 80-90% |
+
+Tập train luôn nằm trước tập test, không đảo lộn thời gian. Nếu RMSE qua 5 fold dao động nhỏ (ví dụ CV dưới 10%) và đường xu hướng gần nằm ngang, có thể kết luận bộ dữ liệu ổn định với bài toán dự báo flow.
+
+---
+
+## 9. Cấu trúc chạy trong `main.ipynb`
 
 > **Toàn bộ logic** nằm trong `modules/`, notebook `main.ipynb` chỉ import và gọi hàm.
 
@@ -305,11 +349,22 @@ main.ipynb
 │   ├── 7.4. Chạy tối ưu hóa Baseline B
 │   ├── 7.5. Trực quan hóa Pareto Front (3D + 2D)
 │   └── 7.6. Phân tích đánh đổi (Trade-off Analysis)
+│
+├── 8. Chứng minh độ ổn định bằng Monte Carlo
+│   ├── 8.1. Cấu hình Monte Carlo
+│   ├── 8.2. Chạy Monte Carlo cho 4 mô hình tối ưu
+│   ├── 8.3. Boxplot, KDE, khoảng tin cậy 95%
+│   └── 8.4. Giải thích vì sao không random split dữ liệu time series
+│
+├── 9. Chứng minh độ ổn định bằng trượt thời gian
+│   ├── 9.1. Chạy 5 cửa sổ trượt Train 60%, Test 10%, Shift 5%
+│   ├── 9.2. Tổng hợp RMSE/CV qua fold
+│   └── 9.3. Kết luận độ ổn định của bộ dữ liệu
 ```
 
 ---
 
-## 9. Dashboard — `demo.ipynb`
+## 10. Dashboard — `demo.ipynb`
 
 ```
 File: demo.ipynb (chạy riêng, load mô hình đã train từ models/)
@@ -330,7 +385,7 @@ File: demo.ipynb (chạy riêng, load mô hình đã train từ models/)
 
 ---
 
-## 10. Cấu trúc thư mục dự kiến
+## 11. Cấu trúc thư mục dự kiến
 
 ```
 DoAn_MachineLearning_UTT/
@@ -349,8 +404,8 @@ DoAn_MachineLearning_UTT/
 │   ├── baselineB_valid.csv            # Baseline B - valid (15%)
 │   └── baselineB_test.csv             # Baseline B - test  (15%)
 ├── configs/
+│   ├── configs.py                     # CONFIG, OPTIM_CONFIG, STABILITY_CONFIG
 │   └── pymooSearchSpaces.py           # Search spaces cho Pymoo (chứa lambda → dùng .py)
-├── configs.json                       # Cấu hình tập trung dự án (paths, baselines, features, modeling, optimization)
 ├── modules/
 │   ├── __init__.py                    # Package init
 │   ├── data_loader.py                 # Load & parse CSV
@@ -359,7 +414,8 @@ DoAn_MachineLearning_UTT/
 │   ├── models.py                      # Định nghĩa, huấn luyện & đánh giá 10 mô hình
 │   ├── visualization.py              # Vẽ biểu đồ, charts
 │   ├── comparison.py                 # So sánh 2 baselines
-│   └── optimization.py               # Tối ưu hóa đa mục tiêu (Pymoo NSGA-II/III)
+│   ├── optimization.py               # Tối ưu hóa đa mục tiêu (Pymoo NSGA-II/III)
+│   └── stability.py                  # Monte Carlo + time sliding validation
 ├── pymooCheckpoint/                   # Checkpoint lưu tiến trình tối ưu Pymoo (tự tạo)
 │   ├── optim_checkpoint_A_5_RandomForest.pkl
 │   ├── optim_checkpoint_A_6_XGBoost.pkl
@@ -374,7 +430,7 @@ DoAn_MachineLearning_UTT/
 
 ---
 
-## 11. Thư viện cần sử dụng
+## 12. Thư viện cần sử dụng
 
 ```txt
 pandas>=2.0
@@ -392,7 +448,7 @@ pymoo>=0.6.0              # Tối ưu hóa đa mục tiêu
 
 ---
 
-## 12. Timeline thực hiện (gợi ý)
+## 13. Timeline thực hiện (gợi ý)
 
 | Tuần | Công việc | Modules liên quan |
 |---|---|---|
@@ -403,7 +459,7 @@ pymoo>=0.6.0              # Tối ưu hóa đa mục tiêu
 
 ---
 
-## 13. Checklist tổng hợp
+## 14. Checklist tổng hợp
 
 ### Phân tích dữ liệu
 - [ ] EDA đầy đủ cho 8 sensors
@@ -428,6 +484,10 @@ pymoo>=0.6.0              # Tối ưu hóa đa mục tiêu
 - [ ] Hệ thống cảnh báo (bình thường / theo dõi / cảnh báo)
 - [ ] Tối ưu hóa đa mục tiêu 2 mô hình tốt nhất (Pymoo)
 - [ ] Pareto Front visualization + phân tích đánh đổi
+- [ ] Monte Carlo stability cho 4 mô hình tối ưu (2 mô hình × 2 baseline)
+- [ ] Boxplot, KDE và khoảng tin cậy 95% cho RMSE Monte Carlo
+- [ ] Time sliding validation 5 fold (train 60%, test 10%, shift 5%)
+- [ ] Kết luận bộ dữ liệu ổn định dựa trên RMSE/CV qua các fold
 
 ---
 

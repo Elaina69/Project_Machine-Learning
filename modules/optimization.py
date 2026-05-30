@@ -196,20 +196,33 @@ class HyperparamOptProblem(Problem):
 
 # ─── Run Optimization ─────────────────────────────────────────────────────
 
-def select_best_models(results_a, results_b, top_n=2):
+def select_best_models(results_a, results_b, top_n=2, eligible_models=None):
     """
     Chọn top_n mô hình tốt nhất trên CẢ HAI baselines.
     Tiêu chí: RMSE trung bình thấp nhất giữa A và B.
     Chỉ xét các mô hình ML (không phải trivial 0a/0b/0c).
+    Mặc định chỉ chọn các mô hình có search space trong Pymoo.
     """
+    if eligible_models is None:
+        eligible_models = set(SEARCH_SPACES.keys())
+    else:
+        eligible_models = set(eligible_models)
+
     # Filter out trivial baselines
     ml_models_a = results_a[~results_a['model'].str.startswith('0')].copy()
     ml_models_b = results_b[~results_b['model'].str.startswith('0')].copy()
+    ml_models_a = ml_models_a[ml_models_a['model'].isin(eligible_models)]
+    ml_models_b = ml_models_b[ml_models_b['model'].isin(eligible_models)]
 
     merged = ml_models_a[['model', 'test_RMSE']].merge(
         ml_models_b[['model', 'test_RMSE']],
         on='model', suffixes=('_A', '_B')
     )
+    if len(merged) == 0:
+        raise ValueError(
+            "Không có mô hình nào vừa có kết quả ở cả hai baseline vừa có "
+            "search space Pymoo."
+        )
     merged['avg_RMSE'] = (merged['test_RMSE_A'] + merged['test_RMSE_B']) / 2
     merged = merged.sort_values('avg_RMSE').head(top_n)
 

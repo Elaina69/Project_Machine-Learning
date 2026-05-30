@@ -50,3 +50,11 @@ Cập nhật code "main.ipynb" và các tài liệu "workflow.md" "structure.md"
     + Kích thước quần thể từ 200 đến 400
     + Số thế hệ (n_gen) từ 100 đến 200
 - Sau đó thực thi tối ưu hóa và tìm tập Pareto, chạy thuật toán và tìm ra các tập hợp các nghiệm tối ưu. Đồng thời phân tích sự đánh đổi (Ví dụ: muốn giảm thêm RMSE thì cần phải đánh đổi những gì)
+
+# Promt 7:
+Đọc lại toàn bộ code `main.ipynb`, `modules/` và tài liệu `.docs/`; cập nhật code dựa vào hướng dẫn `Buoc11.jpg`, `Buoc12-1.jpg`, `Buoc12-2.jpg`, `Buoc12-3.jpg`:
+- Thêm mô phỏng Monte Carlo cho 4 mô hình tối ưu sau Pymoo (2 mô hình tốt nhất × Baseline A/B).
+- Monte Carlo giữ nguyên split time series, chỉ thay đổi `random_state` của thuật toán/model.
+- Thêm trực quan hóa boxplot, histogram/KDE và khoảng tin cậy 95%.
+- Chứng minh độ ổn định bộ dữ liệu bằng kỹ thuật trượt thời gian: train 60%, test 10%, shift 5%, 5 fold.
+- Cập nhật lại toàn bộ tài liệu để phù hợp với code hiện tại.

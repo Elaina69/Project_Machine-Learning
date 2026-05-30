@@ -43,8 +43,22 @@ CONFIG = {
 }
 
 OPTIM_CONFIG = {
-    'pop_size': 300,        # Kích thước quần thể (200-400), tăng từ 200 lên 300
-    'n_gen': 100,           # Số thế hệ (100-200), Giảm từ 100 xuống 50
+    'pop_size': 300,        # Kích thước quần thể khuyến nghị: 200-400
+    'n_gen': 100,           # Số thế hệ khuyến nghị: 100-200
     'algorithm': 'nsga2',   # 'nsga2' hoặc 'nsga3'
     'random_state': 69,
+}
+
+STABILITY_CONFIG = {
+    # Monte Carlo: giữ nguyên split thời gian, chỉ đổi random_state thuật toán
+    'monte_carlo_runs': 30,
+    'monte_carlo_seed_start': 1000,
+
+    # Time sliding validation: Train 60%, Test 10%, bước trượt 5%, 5 fold
+    'sliding_train_ratio': 0.60,
+    'sliding_test_ratio': 0.10,
+    'sliding_step_ratio': 0.05,
+    'sliding_n_folds': 5,
+    'sliding_random_state': 42,
+    'stable_cv_threshold': 10.0,
 }

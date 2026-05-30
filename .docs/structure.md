@@ -5,7 +5,11 @@ DoAn_MachineLearning_UTT/
 │   ├── plan.md                        # File kế hoạch
 │   ├── workflow.md                    # Luồng xử lý chi tiết
 │   ├── structure.md                   # Cấu trúc project (file này)
-│   └── Screenshots...                 # Ảnh hướng dẫn
+│   ├── Buoc11.jpg                     # Hướng dẫn Monte Carlo stability
+│   ├── Buoc12-1.jpg                   # Hướng dẫn time sliding stability
+│   ├── Buoc12-2.jpg                   # Sơ đồ train 60%, test 10%, shift 5%
+│   ├── Buoc12-3.jpg                   # Ví dụ đồ thị RMSE qua 5 fold
+│   └── Screenshots...                 # Ảnh hướng dẫn ban đầu
 ├── __datasets-raw/
 │   └── SV16_PeMSD3_sample_8sensors.csv  # Dataset gốc (48,385 dòng)
 ├── __datasets-clean/
@@ -16,8 +20,8 @@ DoAn_MachineLearning_UTT/
 │   ├── baselineB_valid.csv            # Baseline B - valid (15%)
 │   └── baselineB_test.csv             # Baseline B - test  (15%)
 ├── configs/
+│   ├── configs.py                     # CONFIG, OPTIM_CONFIG, STABILITY_CONFIG
 │   └── pymooSearchSpaces.py           # Search spaces cho Pymoo (chứa lambda → dùng .py)
-├── configs.json                       # Cấu hình tập trung dự án (paths, baselines, features, modeling, optimization)
 ├── modules/
 │   ├── __init__.py                    # Package init
 │   ├── data_loader.py                 # Load & parse CSV
@@ -26,14 +30,19 @@ DoAn_MachineLearning_UTT/
 │   ├── models.py                      # Định nghĩa, huấn luyện & đánh giá 10 mô hình (3 trivial + 7 ML)
 │   ├── visualization.py              # Vẽ biểu đồ, charts
 │   ├── comparison.py                 # So sánh 2 baselines
-│   └── optimization.py               # Tối ưu hóa đa mục tiêu (Pymoo NSGA-II/III)
+│   ├── optimization.py               # Tối ưu hóa đa mục tiêu (Pymoo NSGA-II/III)
+│   └── stability.py                  # Monte Carlo + trượt thời gian
 ├── pymooCheckpoint/                   # Checkpoint lưu tiến trình tối ưu Pymoo (tự tạo)
 │   ├── optim_checkpoint_A_5_RandomForest.pkl
 │   ├── optim_checkpoint_A_6_XGBoost.pkl
 │   ├── optim_checkpoint_B_5_RandomForest.pkl
 │   └── optim_checkpoint_B_6_XGBoost.pkl
 ├── models/                            # Lưu mô hình đã train (.pkl, .joblib, .pth)
-├── resultImages/                      # Hình ảnh kết quả (biểu đồ, charts)
+├── resultImages/                      # Hình ảnh kết quả (EDA, compare, Pareto, stability)
+│   ├── monte_carlo_rmse_boxplot.png   # Boxplot RMSE Monte Carlo
+│   ├── monte_carlo_rmse_kde.png       # Phân phối tần suất + KDE
+│   ├── monte_carlo_rmse_ci95.png      # Khoảng tin cậy 95%
+│   └── time_sliding_rmse.png          # RMSE qua 5 cửa sổ trượt thời gian
 ├── main.ipynb                         # Notebook chính (phân tích + huấn luyện)
 ├── demo.ipynb                         # Dashboard / Demo trực quan
 └── requirements.txt
