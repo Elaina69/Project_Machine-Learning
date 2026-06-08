@@ -11,5 +11,6 @@ Luồng chính nằm trong `main.ipynb`:
 5. Tối ưu 2 mô hình tốt nhất bằng Pymoo với 3 mục tiêu: RMSE, thời gian tìm kiếm, độ phức tạp.
 6. Chạy Monte Carlo cho 4 mô hình tối ưu, giữ split thời gian cố định.
 7. Kiểm định ổn định dữ liệu bằng 5 cửa sổ trượt thời gian: train 60%, test 10%, shift 5%.
+8. Chọn mô hình cuối bằng scorecard tổng hợp và mở rộng sinh dữ liệu bằng feature-space GAN.
 
 Tài liệu chi tiết nằm trong `.docs/plan.md`, `.docs/workflow.md` và `.docs/structure.md`.

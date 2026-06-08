@@ -11,4 +11,5 @@ Modules:
     - comparison: So sánh 2 baselines
     - optimization: Tối ưu hóa đa mục tiêu siêu tham số (Pymoo)
     - stability: Monte Carlo và kiểm định trượt thời gian
+    - gan_synthetic: Sinh dữ liệu ảo bằng GAN trong không gian feature
 """

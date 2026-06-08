@@ -359,12 +359,38 @@ main.ipynb
 ├── 9. Chứng minh độ ổn định bằng trượt thời gian
 │   ├── 9.1. Chạy 5 cửa sổ trượt Train 60%, Test 10%, Shift 5%
 │   ├── 9.2. Tổng hợp RMSE/CV qua fold
-│   └── 9.3. Kết luận độ ổn định của bộ dữ liệu
+│   ├── 9.3. Kết luận độ ổn định của bộ dữ liệu
+│   └── 9.4. Scorecard chọn mô hình tốt nhất sau Pymoo + stability
+│
+├── 10. Tạo sinh dữ liệu bằng GAN
+│   ├── 10.1. Cấu hình dữ liệu và mô hình GAN
+│   ├── 10.2. Huấn luyện feature-space GAN trên train set thật
+│   ├── 10.3. Sinh dữ liệu ảo tỷ lệ 1:1
+│   ├── 10.4. Đánh giá Train Real/Test Fake và Train Fake/Test Real
+│   ├── 10.5. Tích hợp dữ liệu ảo và tìm điểm bão hòa
+│   └── 10.6. Hướng mở rộng: chạy lại Pymoo và XAI
 ```
 
 ---
 
-## 10. Dashboard — `demo.ipynb`
+## 10. Tạo sinh dữ liệu bằng GAN
+
+```
+Module: modules/gan_synthetic.py → gọi trong main.ipynb mục 10
+```
+
+Mục tiêu của phần GAN là sinh dữ liệu ảo trong không gian mẫu đã được feature engineering (`FEATURE_COLS + flow_target`), không ghép trực tiếp timestamp giả vào chuỗi thời gian thật. Quy trình gồm:
+
+- Huấn luyện GAN trên train set thật của baseline/model tốt nhất.
+- Sinh synthetic data tỷ lệ 1:1 để đánh giá chéo công bằng.
+- Chạy Train Real/Test Fake để kiểm tra dữ liệu ảo có theo quy luật thật không.
+- Chạy Train Fake/Test Real để kiểm tra synthetic data có utility cho huấn luyện không.
+- Thử `100% real + 50/100/200% synthetic` để tìm điểm bão hòa dữ liệu ảo.
+- Nếu augmentation có lợi, chạy lại Pymoo trên tập train đã gộp synthetic và phân tích XAI/feature importance.
+
+---
+
+## 11. Dashboard — `demo.ipynb`
 
 ```
 File: demo.ipynb (chạy riêng, load mô hình đã train từ models/)
@@ -385,7 +411,7 @@ File: demo.ipynb (chạy riêng, load mô hình đã train từ models/)
 
 ---
 
-## 11. Cấu trúc thư mục dự kiến
+## 12. Cấu trúc thư mục dự kiến
 
 ```
 DoAn_MachineLearning_UTT/
@@ -415,7 +441,8 @@ DoAn_MachineLearning_UTT/
 │   ├── visualization.py              # Vẽ biểu đồ, charts
 │   ├── comparison.py                 # So sánh 2 baselines
 │   ├── optimization.py               # Tối ưu hóa đa mục tiêu (Pymoo NSGA-II/III)
-│   └── stability.py                  # Monte Carlo + time sliding validation
+│   ├── stability.py                  # Monte Carlo + time sliding + chọn mô hình cuối
+│   └── gan_synthetic.py              # Sinh dữ liệu ảo bằng GAN trong không gian feature
 ├── pymooCheckpoint/                   # Checkpoint lưu tiến trình tối ưu Pymoo (tự tạo)
 │   ├── optim_checkpoint_A_5_RandomForest.pkl
 │   ├── optim_checkpoint_A_6_XGBoost.pkl
@@ -430,7 +457,7 @@ DoAn_MachineLearning_UTT/
 
 ---
 
-## 12. Thư viện cần sử dụng
+## 13. Thư viện cần sử dụng
 
 ```txt
 pandas>=2.0
@@ -448,7 +475,7 @@ pymoo>=0.6.0              # Tối ưu hóa đa mục tiêu
 
 ---
 
-## 13. Timeline thực hiện (gợi ý)
+## 14. Timeline thực hiện (gợi ý)
 
 | Tuần | Công việc | Modules liên quan |
 |---|---|---|
@@ -459,7 +486,7 @@ pymoo>=0.6.0              # Tối ưu hóa đa mục tiêu
 
 ---
 
-## 14. Checklist tổng hợp
+## 15. Checklist tổng hợp
 
 ### Phân tích dữ liệu
 - [ ] EDA đầy đủ cho 8 sensors
@@ -488,6 +515,8 @@ pymoo>=0.6.0              # Tối ưu hóa đa mục tiêu
 - [ ] Boxplot, KDE và khoảng tin cậy 95% cho RMSE Monte Carlo
 - [ ] Time sliding validation 5 fold (train 60%, test 10%, shift 5%)
 - [ ] Kết luận bộ dữ liệu ổn định dựa trên RMSE/CV qua các fold
+- [ ] Scorecard cuối để chọn mô hình tốt nhất sau Pymoo + Monte Carlo + time sliding
+- [ ] GAN synthetic data: Train Real/Test Fake, Train Fake/Test Real, augmentation saturation
 
 ---
 

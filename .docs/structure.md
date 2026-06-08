@@ -31,7 +31,8 @@ DoAn_MachineLearning_UTT/
 │   ├── visualization.py              # Vẽ biểu đồ, charts
 │   ├── comparison.py                 # So sánh 2 baselines
 │   ├── optimization.py               # Tối ưu hóa đa mục tiêu (Pymoo NSGA-II/III)
-│   └── stability.py                  # Monte Carlo + trượt thời gian
+│   ├── stability.py                  # Monte Carlo + trượt thời gian + chọn mô hình cuối
+│   └── gan_synthetic.py              # Sinh dữ liệu ảo bằng GAN trong không gian feature
 ├── pymooCheckpoint/                   # Checkpoint lưu tiến trình tối ưu Pymoo (tự tạo)
 │   ├── optim_checkpoint_A_5_RandomForest.pkl
 │   ├── optim_checkpoint_A_6_XGBoost.pkl
@@ -42,7 +43,8 @@ DoAn_MachineLearning_UTT/
 │   ├── monte_carlo_rmse_boxplot.png   # Boxplot RMSE Monte Carlo
 │   ├── monte_carlo_rmse_kde.png       # Phân phối tần suất + KDE
 │   ├── monte_carlo_rmse_ci95.png      # Khoảng tin cậy 95%
-│   └── time_sliding_rmse.png          # RMSE qua 5 cửa sổ trượt thời gian
+│   ├── time_sliding_rmse.png          # RMSE qua 5 cửa sổ trượt thời gian
+│   └── gan_synthetic_saturation.png   # Điểm bão hòa khi tăng synthetic data
 ├── main.ipynb                         # Notebook chính (phân tích + huấn luyện)
 ├── demo.ipynb                         # Dashboard / Demo trực quan
 └── requirements.txt

@@ -407,3 +407,331 @@ def plot_time_sliding_rmse(sliding_results: pd.DataFrame,
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(save_path, bbox_inches='tight', dpi=150)
     plt.show()
+
+
+# ─── Final Model Selection ────────────────────────────────────────────────
+
+DEFAULT_FINAL_SELECTION_WEIGHTS = {
+    # Hiệu năng dự báo sau tối ưu, đo trên test cố định qua Monte Carlo.
+    'mc_RMSE_mean': 0.30,
+    # Khả năng tổng quát qua các giai đoạn thời gian khác nhau.
+    'sliding_RMSE_mean': 0.25,
+    # Chất lượng nghiệm cân bằng trên validation trong Pymoo.
+    'pareto_valid_RMSE': 0.10,
+    # Độ nhạy với random_state của thuật toán/model.
+    'mc_RMSE_cv_%': 0.15,
+    # Độ ổn định của dữ liệu qua các cửa sổ trượt thời gian.
+    'sliding_RMSE_cv_%': 0.15,
+    # Hai tiêu chí phụ từ Pymoo để tránh chọn mô hình quá nặng.
+    'pareto_train_time_s': 0.025,
+    'pareto_complexity': 0.025,
+}
+
+
+def get_final_selection_metrics(weights: dict = None) -> pd.DataFrame:
+    """Liệt kê các tiêu chí dùng để chọn mô hình tối ưu cuối cùng.
+
+    Tất cả tiêu chí trong bảng điểm đều được chuẩn hóa min-max theo hướng
+    "càng thấp càng tốt". R²/MAE/MASE vẫn được đưa vào scorecard để báo cáo,
+    nhưng mặc định không tham gia điểm tổng hợp vì RMSE là tiêu chí chính của
+    đồ án và các kiểm định ổn định đều xoay quanh RMSE.
+    """
+    weights = DEFAULT_FINAL_SELECTION_WEIGHTS if weights is None else weights
+    rows = [
+        {
+            'metric': 'mc_RMSE_mean',
+            'group': 'Hiệu năng test sau Pymoo',
+            'direction': 'min',
+            'weight': weights.get('mc_RMSE_mean', 0),
+            'meaning': 'RMSE trung bình trên test cố định qua các seed Monte Carlo.',
+        },
+        {
+            'metric': 'sliding_RMSE_mean',
+            'group': 'Hiệu năng theo thời gian',
+            'direction': 'min',
+            'weight': weights.get('sliding_RMSE_mean', 0),
+            'meaning': 'RMSE trung bình qua 5 cửa sổ trượt thời gian.',
+        },
+        {
+            'metric': 'pareto_valid_RMSE',
+            'group': 'Nghiệm Pymoo',
+            'direction': 'min',
+            'weight': weights.get('pareto_valid_RMSE', 0),
+            'meaning': 'RMSE validation của nghiệm cân bằng trên Pareto front.',
+        },
+        {
+            'metric': 'mc_RMSE_cv_%',
+            'group': 'Ổn định thuật toán',
+            'direction': 'min',
+            'weight': weights.get('mc_RMSE_cv_%', 0),
+            'meaning': 'Hệ số biến thiên RMSE khi chỉ đổi random_state.',
+        },
+        {
+            'metric': 'sliding_RMSE_cv_%',
+            'group': 'Ổn định dữ liệu',
+            'direction': 'min',
+            'weight': weights.get('sliding_RMSE_cv_%', 0),
+            'meaning': 'Hệ số biến thiên RMSE qua các fold trượt thời gian.',
+        },
+        {
+            'metric': 'pareto_train_time_s',
+            'group': 'Chi phí',
+            'direction': 'min',
+            'weight': weights.get('pareto_train_time_s', 0),
+            'meaning': 'Thời gian huấn luyện của nghiệm cân bằng trong Pymoo.',
+        },
+        {
+            'metric': 'pareto_complexity',
+            'group': 'Chi phí',
+            'direction': 'min',
+            'weight': weights.get('pareto_complexity', 0),
+            'meaning': 'Độ phức tạp mô hình, ví dụ n_estimators x max_depth.',
+        },
+    ]
+    return pd.DataFrame(rows)
+
+
+def _to_float(value, default=np.nan):
+    try:
+        if pd.isna(value):
+            return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def _values_stats(values, confidence: float = 0.95):
+    values = pd.Series(values).dropna().astype(float).values
+    if len(values) == 0:
+        return {
+            'mean': np.nan, 'std': np.nan, 'min': np.nan, 'max': np.nan,
+            'range': np.nan, 'cv_%': np.nan, 'ci95_low': np.nan,
+            'ci95_high': np.nan, 'ci95_width': np.nan,
+        }
+
+    z = 1.96 if confidence == 0.95 else 1.96
+    mean = float(np.mean(values))
+    std = float(np.std(values, ddof=1)) if len(values) > 1 else 0.0
+    se = std / np.sqrt(len(values)) if len(values) > 0 else 0.0
+    low = mean - z * se
+    high = mean + z * se
+    return {
+        'mean': mean,
+        'std': std,
+        'min': float(np.min(values)),
+        'max': float(np.max(values)),
+        'range': float(np.max(values) - np.min(values)),
+        'cv_%': (std / mean * 100) if mean else 0.0,
+        'ci95_low': low,
+        'ci95_high': high,
+        'ci95_width': high - low,
+    }
+
+
+def _solution_to_dict(solution) -> dict:
+    if isinstance(solution, pd.Series):
+        return solution.to_dict()
+    if isinstance(solution, dict):
+        return dict(solution)
+    return dict(solution)
+
+
+def _params_to_text(params: dict) -> str:
+    if not params:
+        return '{}'
+    parts = []
+    for key, value in params.items():
+        if isinstance(value, float):
+            parts.append(f'{key}={value:.6g}')
+        else:
+            parts.append(f'{key}={value}')
+    return '{' + ', '.join(parts) + '}'
+
+
+def _minmax_minimize(series: pd.Series) -> pd.Series:
+    values = pd.to_numeric(series, errors='coerce')
+    valid = values.dropna()
+    if len(valid) == 0:
+        return pd.Series(np.ones(len(series)), index=series.index)
+    vmin = valid.min()
+    vmax = valid.max()
+    if np.isclose(vmax, vmin):
+        return pd.Series(np.zeros(len(series)), index=series.index)
+    score = (values - vmin) / (vmax - vmin)
+    return score.fillna(1.0)
+
+
+def build_final_model_scorecard(
+        results_a: pd.DataFrame,
+        results_b: pd.DataFrame,
+        optimized_solutions: dict,
+        optimized_params: dict,
+        monte_carlo_results: pd.DataFrame,
+        time_sliding_results: pd.DataFrame,
+        weights: dict = None,
+        stable_cv_threshold: float = 10.0,
+    ) -> pd.DataFrame:
+    """Ghép Pymoo + Monte Carlo + trượt thời gian để chọn mô hình cuối.
+
+    Scorecard trả lời câu hỏi: "Bộ hyperparameters Pymoo này có thật sự là
+    mô hình tốt nhất và ổn định nhất không?" bằng cách so cùng lúc:
+        - chất lượng trên test cố định sau tối ưu,
+        - độ dao động khi đổi random_state,
+        - độ ổn định qua các cửa sổ thời gian,
+        - RMSE validation của nghiệm Pymoo,
+        - thời gian huấn luyện và độ phức tạp.
+
+    final_score càng thấp càng tốt.
+    """
+    weights = DEFAULT_FINAL_SELECTION_WEIGHTS if weights is None else weights
+    result_lookup = {
+        'Baseline_A': results_a.set_index('model'),
+        'Baseline_B': results_b.set_index('model'),
+    }
+
+    rows = []
+    for baseline_name, model_params in optimized_params.items():
+        for model_name, params in model_params.items():
+            record = {
+                'baseline': baseline_name,
+                'model': model_name,
+                'case': f'{baseline_name} | {model_name}',
+                'optimized_params': _params_to_text(params),
+            }
+
+            # Kết quả hold-out ban đầu trước tối ưu, dùng làm mốc tham chiếu.
+            base_results = result_lookup.get(baseline_name)
+            if base_results is not None and model_name in base_results.index:
+                base_row = base_results.loc[model_name]
+                for metric in ['MAE', 'RMSE', 'MAPE', 'R2', 'MASE']:
+                    record[f'holdout_test_{metric}'] = _to_float(
+                        base_row.get(f'test_{metric}')
+                    )
+
+            # Nghiệm cân bằng trên Pareto front.
+            solution = optimized_solutions.get(baseline_name, {}).get(model_name)
+            if solution is not None:
+                solution_dict = _solution_to_dict(solution)
+                record['pareto_valid_RMSE'] = _to_float(solution_dict.get('RMSE'))
+                record['pareto_train_time_s'] = _to_float(
+                    solution_dict.get('train_time_s')
+                )
+                record['pareto_complexity'] = _to_float(
+                    solution_dict.get('complexity')
+                )
+
+            mc_group = monte_carlo_results[
+                (monte_carlo_results['baseline'] == baseline_name)
+                & (monte_carlo_results['model'] == model_name)
+            ]
+            record['mc_n_runs'] = len(mc_group)
+            if len(mc_group) > 0:
+                rmse_stats = _values_stats(mc_group['RMSE'])
+                for key, value in rmse_stats.items():
+                    record[f'mc_RMSE_{key}'] = value
+                for metric in ['MAE', 'MAPE', 'R2', 'MASE', 'train_time_s']:
+                    if metric in mc_group.columns:
+                        record[f'mc_{metric}_mean'] = float(
+                            mc_group[metric].astype(float).mean()
+                        )
+
+            sliding_group = time_sliding_results[
+                (time_sliding_results['baseline'] == baseline_name)
+                & (time_sliding_results['model'] == model_name)
+            ]
+            record['sliding_n_folds'] = len(sliding_group)
+            if len(sliding_group) > 0:
+                rmse_stats = _values_stats(sliding_group['RMSE'])
+                for key, value in rmse_stats.items():
+                    record[f'sliding_RMSE_{key}'] = value
+                for metric in ['MAE', 'MAPE', 'R2', 'MASE', 'train_time_s']:
+                    if metric in sliding_group.columns:
+                        record[f'sliding_{metric}_mean'] = float(
+                            sliding_group[metric].astype(float).mean()
+                        )
+
+            record['stable_by_mc_cv'] = (
+                record.get('mc_RMSE_cv_%', np.inf) <= stable_cv_threshold
+            )
+            record['stable_by_time_cv'] = (
+                record.get('sliding_RMSE_cv_%', np.inf) <= stable_cv_threshold
+            )
+            record['stable_overall'] = (
+                record['stable_by_mc_cv'] and record['stable_by_time_cv']
+            )
+            rows.append(record)
+
+    scorecard = pd.DataFrame(rows)
+    if scorecard.empty:
+        return scorecard
+
+    weighted_score = pd.Series(np.zeros(len(scorecard)), index=scorecard.index)
+    total_weight = 0.0
+    for col, weight in weights.items():
+        if col not in scorecard.columns or weight <= 0:
+            continue
+        norm_col = f'{col}_norm'
+        scorecard[norm_col] = _minmax_minimize(scorecard[col])
+        weighted_score += scorecard[norm_col] * weight
+        total_weight += weight
+
+    if total_weight > 0:
+        scorecard['final_score'] = weighted_score / total_weight
+    else:
+        scorecard['final_score'] = np.nan
+
+    scorecard = scorecard.sort_values(
+        ['final_score', 'mc_RMSE_mean', 'sliding_RMSE_cv_%'],
+        ascending=[True, True, True],
+    ).reset_index(drop=True)
+    scorecard.insert(0, 'rank', np.arange(1, len(scorecard) + 1))
+
+    numeric_cols = scorecard.select_dtypes(include=[np.number]).columns
+    scorecard[numeric_cols] = scorecard[numeric_cols].round(4)
+    return scorecard
+
+
+def print_final_model_conclusion(scorecard: pd.DataFrame) -> pd.Series:
+    """In kết luận ngắn gọn từ scorecard chọn mô hình cuối cùng."""
+    if scorecard is None or scorecard.empty:
+        raise ValueError('scorecard rỗng, chưa có dữ liệu để kết luận.')
+
+    best = scorecard.iloc[0]
+    best_mc = scorecard.loc[scorecard['mc_RMSE_mean'].idxmin()]
+    best_time = scorecard.loc[scorecard['sliding_RMSE_mean'].idxmin()]
+    most_mc_stable = scorecard.loc[scorecard['mc_RMSE_cv_%'].idxmin()]
+    most_time_stable = scorecard.loc[scorecard['sliding_RMSE_cv_%'].idxmin()]
+
+    print(f"\n{'='*70}")
+    print('KẾT LUẬN CHỌN MÔ HÌNH SAU PYMO O + STABILITY'.replace('PYMO O', 'PYMOO'))
+    print(f"{'='*70}")
+    print(
+        f"Best overall: {best['case']} | final_score={best['final_score']:.4f} | "
+        f"MC_RMSE={best['mc_RMSE_mean']:.4f} | "
+        f"Sliding_RMSE={best['sliding_RMSE_mean']:.4f} | "
+        f"MC_CV={best['mc_RMSE_cv_%']:.4f}% | "
+        f"Sliding_CV={best['sliding_RMSE_cv_%']:.4f}%"
+    )
+    print(f"Params: {best['optimized_params']}")
+    print(
+        f"Best MC RMSE: {best_mc['case']} ({best_mc['mc_RMSE_mean']:.4f})"
+    )
+    print(
+        f"Best time-sliding RMSE: {best_time['case']} "
+        f"({best_time['sliding_RMSE_mean']:.4f})"
+    )
+    print(
+        f"Ổn định nhất theo Monte Carlo CV: {most_mc_stable['case']} "
+        f"({most_mc_stable['mc_RMSE_cv_%']:.4f}%)"
+    )
+    print(
+        f"Ổn định nhất theo time-sliding CV: {most_time_stable['case']} "
+        f"({most_time_stable['sliding_RMSE_cv_%']:.4f}%)"
+    )
+
+    if bool(best.get('stable_overall', False)):
+        print('Kết luận: mô hình được chọn vừa có sai số thấp vừa đạt ngưỡng ổn định CV.')
+    else:
+        print('Kết luận: mô hình được chọn có điểm tổng hợp tốt nhất nhưng chưa đạt đủ ngưỡng CV.')
+
+    return best

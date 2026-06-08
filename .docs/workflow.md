@@ -13,6 +13,7 @@ graph TD
     B --> B6["comparison.py"]
     B --> B7["optimization.py"]
     B --> B8["stability.py"]
+    B --> B9["gan_synthetic.py"]
 
     A -->|đọc| C["__datasets-raw/SV16_...csv"]
     A -->|ghi| D["__datasets-clean/*.csv"]
@@ -24,7 +25,7 @@ graph TD
     G -->|import| B
 ```
 
-Toàn bộ logic xử lý nằm trong `modules/`. Notebook `main.ipynb` chỉ import và gọi hàm theo đúng 9 bước. Notebook `demo.ipynb` chạy sau, load kết quả đã lưu để hiển thị dashboard.
+Toàn bộ logic xử lý nằm trong `modules/`. Notebook `main.ipynb` chỉ import và gọi hàm theo đúng các bước của pipeline. Notebook `demo.ipynb` chạy sau, load kết quả đã lưu để hiển thị dashboard.
 
 ---
 
@@ -481,6 +482,37 @@ Nếu đường `time_sliding_rmse.png` gần nằm ngang và `RMSE_cv_%` thấp
 
 ---
 
+### Bước 9.4 → Kết luận mô hình tốt nhất sau Pymoo và stability
+
+```
+stability.build_final_model_scorecard()
+         │
+         ├── Ghép nghiệm cân bằng của Pymoo
+         ├── Ghép kết quả Monte Carlo trên test cố định
+         ├── Ghép kết quả trượt thời gian qua 5 fold
+         ├── Chuẩn hóa các tiêu chí theo hướng càng thấp càng tốt
+         └── Tính final_score để xếp hạng 4 trường hợp tối ưu
+```
+
+Tiêu chí so sánh chính gồm `mc_RMSE_mean`, `mc_RMSE_cv_%`, `sliding_RMSE_mean`, `sliding_RMSE_cv_%`, `pareto_valid_RMSE`, `pareto_train_time_s` và `pareto_complexity`. Mô hình cuối cùng là mô hình có `final_score` thấp nhất, đồng thời đạt ngưỡng ổn định CV.
+
+---
+
+### Bước 10 → Tạo sinh dữ liệu bằng GAN
+
+```
+gan_synthetic.train_feature_gan()
+         │
+         ├── Học phân phối FEATURE_COLS + flow_target trên train set thật
+         ├── Sinh synthetic samples tỷ lệ 1:1 hoặc 1:N
+         ├── Đánh giá Train Real/Test Fake và Train Fake/Test Real
+         └── Thử 100% real + 50/100/200% synthetic để tìm điểm bão hòa
+```
+
+GAN được áp dụng trong không gian mẫu đã có lag/rolling/time features, không concat trực tiếp timeline giả vào chuỗi thật. Nếu dữ liệu ảo giúp giảm RMSE trên real test, bước tiếp theo là chạy lại Pymoo trên tập train đã tăng cường và phân tích XAI/feature importance.
+
+---
+
 ## Luồng thực thi trong `demo.ipynb`
 
 ```
@@ -520,6 +552,7 @@ graph LR
     MD --> CP["comparison.py"]
     MD --> OP["optimization.py"]
     OP --> ST["stability.py"]
+    ST --> GAN["gan_synthetic.py"]
     VZ --> CP
     CP --> OP
     EDA["eda.py"] --> VZ
@@ -542,7 +575,8 @@ graph LR
 | `visualization` | y_test, y_pred | Biểu đồ | main.ipynb §5.4, §5.5 |
 | `comparison` | results_a, results_b | Bảng + biểu đồ + kết luận | main.ipynb §6 |
 | `optimization` | X_train/valid, results_a/b | Pareto front + trade-off analysis | main.ipynb §7 |
-| `stability` | Pareto params, train/valid/test, df baseline | Monte Carlo summary, time sliding summary, biểu đồ ổn định | main.ipynb §8, §9 |
+| `stability` | Pareto params, train/valid/test, df baseline | Monte Carlo summary, time sliding summary, scorecard chọn mô hình cuối | main.ipynb §8, §9 |
+| `gan_synthetic` | df train đã feature engineering, FEATURE_COLS, params mô hình tốt nhất | synthetic data, Real/Fake utility, augmentation results | main.ipynb §10 |
 
 ---
 
@@ -596,4 +630,11 @@ SV16_PeMSD3_sample_8sensors.csv (48,385 dòng × 6 cột)
         → Vẽ boxplot, KDE, CI 95%
         → Time sliding 5 fold: train 60%, test 10%, shift 5%
         → Kết luận độ ổn định dữ liệu qua RMSE/CV
+        → Scorecard cuối để chọn mô hình tốt nhất và ổn định nhất
+  │
+  └── [gan_synthetic.*]
+        → Huấn luyện feature-space GAN trên train set thật
+        → Sinh synthetic data 1:1 hoặc 1:N
+        → Đánh giá Train Real/Test Fake và Train Fake/Test Real
+        → Thử tăng cường dữ liệu và tìm điểm bão hòa synthetic
 ```
