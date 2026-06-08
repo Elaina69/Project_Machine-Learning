@@ -1,4 +1,27 @@
 SEARCH_SPACES = {
+    '2_Ridge': {
+        'params': [
+            ('alpha', 0.001, 100.0, float),        # Hệ số regularization
+        ],
+        'complexity_fn': lambda params: 1,  # Ridge luôn O(n_features)
+    },
+
+    '3_KNN': {
+        'params': [
+            ('n_neighbors', 3, 50, int),           # Số láng giềng
+        ],
+        'complexity_fn': lambda params: params[0],  # k
+    },
+    
+    '4_DecisionTree': {
+        'params': [
+            ('max_depth', 3, 30, int),             # Độ sâu tối đa
+            ('min_samples_split', 2, 30, int),     # Mẫu tối thiểu để chia
+            ('min_samples_leaf', 1, 20, int),      # Mẫu tối thiểu ở lá
+        ],
+        'complexity_fn': lambda params: params[0],  # depth
+    },
+
     '5_RandomForest': {
         'params': [
             ('n_estimators', 50, 200, int),       # Số cây (giảm từ 500→200 để tăng tốc)
@@ -20,28 +43,5 @@ SEARCH_SPACES = {
             ('reg_lambda', 0.0, 10.0, float),      # L2 regularization
         ],
         'complexity_fn': lambda params: params[0] * params[1],  # n_trees × depth
-    },
-
-    '4_DecisionTree': {
-        'params': [
-            ('max_depth', 3, 30, int),             # Độ sâu tối đa
-            ('min_samples_split', 2, 30, int),     # Mẫu tối thiểu để chia
-            ('min_samples_leaf', 1, 20, int),      # Mẫu tối thiểu ở lá
-        ],
-        'complexity_fn': lambda params: params[0],  # depth
-    },
-
-    '2_Ridge': {
-        'params': [
-            ('alpha', 0.001, 100.0, float),        # Hệ số regularization
-        ],
-        'complexity_fn': lambda params: 1,  # Ridge luôn O(n_features)
-    },
-
-    '3_KNN': {
-        'params': [
-            ('n_neighbors', 3, 50, int),           # Số láng giềng
-        ],
-        'complexity_fn': lambda params: params[0],  # k
     },
 }

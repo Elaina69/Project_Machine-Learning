@@ -51,7 +51,7 @@ OPTIM_CONFIG = {
 
 STABILITY_CONFIG = {
     # Monte Carlo: giữ nguyên split thời gian, chỉ đổi random_state thuật toán
-    'monte_carlo_runs': 30,
+    'monte_carlo_runs': 100,
     'monte_carlo_seed_start': 1000,
 
     # Time sliding validation: Train 60%, Test 10%, bước trượt 5%, 5 fold
@@ -59,6 +59,6 @@ STABILITY_CONFIG = {
     'sliding_test_ratio': 0.10,
     'sliding_step_ratio': 0.05,
     'sliding_n_folds': 5,
-    'sliding_random_state': 42,
+    'sliding_random_state': 69,
     'stable_cv_threshold': 10.0,
 }
