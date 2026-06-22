@@ -1,0 +1,17 @@
+case,scenario,model,synthetic_ratio,n_real_train,n_synthetic_train,n_test,MAE,RMSE,MAPE,R2,MASE,baseline
+Baseline_A | 5_RandomForest,100% Real + 0% Synthetic,5_RandomForest,0.0,16892,0,3620,10.5137,13.2282,15.7502,0.8847,0.7675,Baseline_A
+Baseline_A | 5_RandomForest,100% Real + 50% Synthetic,5_RandomForest,0.5,16892,8446,3620,10.8992,13.6941,16.2251,0.8764,0.4421,Baseline_A
+Baseline_A | 5_RandomForest,100% Real + 100% Synthetic,5_RandomForest,1.0,16892,16892,3620,11.1435,13.9715,16.5345,0.8714,0.3741,Baseline_A
+Baseline_A | 5_RandomForest,100% Real + 200% Synthetic,5_RandomForest,2.0,16892,33784,3620,11.5124,14.4046,17.0563,0.8633,0.3263,Baseline_A
+Baseline_A | 6_XGBoost,100% Real + 0% Synthetic,6_XGBoost,0.0,16892,0,3620,10.2835,12.942,15.3627,0.8896,0.7507,Baseline_A
+Baseline_A | 6_XGBoost,100% Real + 50% Synthetic,6_XGBoost,0.5,16892,8446,3620,10.8469,13.6541,16.0934,0.8772,0.44,Baseline_A
+Baseline_A | 6_XGBoost,100% Real + 100% Synthetic,6_XGBoost,1.0,16892,16892,3620,11.3043,14.1595,16.7485,0.8679,0.3795,Baseline_A
+Baseline_A | 6_XGBoost,100% Real + 200% Synthetic,6_XGBoost,2.0,16892,33784,3620,11.7463,14.7934,17.3024,0.8558,0.3329,Baseline_A
+Baseline_B | 5_RandomForest,100% Real + 0% Synthetic,5_RandomForest,0.0,16892,0,3620,10.6825,13.4218,17.9474,0.8671,0.7853,Baseline_B
+Baseline_B | 5_RandomForest,100% Real + 50% Synthetic,5_RandomForest,0.5,16892,8446,3620,10.9351,13.7485,18.2115,0.8606,0.4683,Baseline_B
+Baseline_B | 5_RandomForest,100% Real + 100% Synthetic,5_RandomForest,1.0,16892,16892,3620,11.1059,13.9357,18.3464,0.8568,0.4003,Baseline_B
+Baseline_B | 5_RandomForest,100% Real + 200% Synthetic,5_RandomForest,2.0,16892,33784,3620,11.3245,14.1902,18.5097,0.8515,0.3451,Baseline_B
+Baseline_B | 6_XGBoost,100% Real + 0% Synthetic,6_XGBoost,0.0,16892,0,3620,10.4817,13.1863,17.6105,0.8718,0.7706,Baseline_B
+Baseline_B | 6_XGBoost,100% Real + 50% Synthetic,6_XGBoost,0.5,16892,8446,3620,10.9901,13.7717,18.1504,0.8601,0.4706,Baseline_B
+Baseline_B | 6_XGBoost,100% Real + 100% Synthetic,6_XGBoost,1.0,16892,16892,3620,11.2161,14.0437,18.4468,0.8545,0.4043,Baseline_B
+Baseline_B | 6_XGBoost,100% Real + 200% Synthetic,6_XGBoost,2.0,16892,33784,3620,11.5028,14.3805,18.774,0.8475,0.3506,Baseline_B

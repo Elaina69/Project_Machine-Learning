@@ -323,8 +323,13 @@ def real_fake_cross_evaluation(
         target_col: str = 'flow_target',
         random_state: int = 42,
         n_jobs: int = -1,
+        baseline_name: str = None,
+        synthetic_ratio: float = None,
     ) -> pd.DataFrame:
     """Đánh giá Train Real/Test Fake và Train Fake/Test Real."""
+    if fake_df is None or len(fake_df) == 0:
+        raise ValueError('fake_df phải có dữ liệu để chạy Real/Fake cross-evaluation.')
+
     X_real = real_df[feature_cols].values
     y_real = real_df[target_col].values
     X_fake = fake_df[feature_cols].values
@@ -345,13 +350,18 @@ def real_fake_cross_evaluation(
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         metrics = evaluate(y_test, y_pred, y_train)
-        records.append({
+        record = {
             'scenario': scenario,
             'model': model_name,
             'n_train': len(X_train),
             'n_test': len(X_test),
             **metrics,
-        })
+        }
+        if baseline_name is not None:
+            record['baseline'] = baseline_name
+        if synthetic_ratio is not None:
+            record['synthetic_ratio'] = synthetic_ratio
+        records.append(record)
     return pd.DataFrame(records)
 
 
@@ -366,6 +376,7 @@ def synthetic_augmentation_experiment(
         ratios=(0.5, 1.0, 2.0),
         random_state: int = 42,
         n_jobs: int = -1,
+        baseline_name: str = None,
     ) -> pd.DataFrame:
     """Thử các tỷ lệ 100% real + X% synthetic để tìm điểm bão hòa."""
     rng = np.random.RandomState(random_state)
@@ -375,11 +386,17 @@ def synthetic_augmentation_experiment(
     records = []
     for ratio in ratios:
         n_fake = int(round(len(real_train_df) * ratio))
-        fake_part = synthetic_df.sample(
-            n=n_fake,
-            replace=n_fake > len(synthetic_df),
-            random_state=int(rng.randint(0, 1_000_000)),
-        )
+        if n_fake == 0:
+            source_df = synthetic_df if synthetic_df is not None else real_train_df
+            fake_part = source_df.iloc[0:0].copy()
+        else:
+            if synthetic_df is None or len(synthetic_df) == 0:
+                raise ValueError('synthetic_df rỗng nhưng ratio yêu cầu dữ liệu synthetic.')
+            fake_part = synthetic_df.sample(
+                n=n_fake,
+                replace=n_fake > len(synthetic_df),
+                random_state=int(rng.randint(0, 1_000_000)),
+            )
         aug_train = pd.concat([real_train_df, fake_part], ignore_index=True)
 
         model = build_model(
@@ -392,7 +409,7 @@ def synthetic_augmentation_experiment(
         y_pred = model.predict(X_test)
         metrics = evaluate(y_test, y_pred, aug_train[target_col].values)
 
-        records.append({
+        record = {
             'scenario': f'100% Real + {int(ratio * 100)}% Synthetic',
             'model': model_name,
             'synthetic_ratio': ratio,
@@ -400,8 +417,11 @@ def synthetic_augmentation_experiment(
             'n_synthetic_train': n_fake,
             'n_test': len(real_test_df),
             **metrics,
-        })
-    return pd.DataFrame(records).sort_values('RMSE').reset_index(drop=True)
+        }
+        if baseline_name is not None:
+            record['baseline'] = baseline_name
+        records.append(record)
+    return pd.DataFrame(records).sort_values('synthetic_ratio').reset_index(drop=True)
 
 
 def save_synthetic_data(df: pd.DataFrame, path: str):

@@ -584,6 +584,14 @@ def analyze_tradeoffs(pareto_df, model_name):
     lines.append(f"📊 PHÂN TÍCH ĐÁNH ĐỔI — {model_name}")
     lines.append(f"{'='*60}")
     lines.append(f"   Số nghiệm Pareto: {len(pareto_df)}")
+    lines.append("\n🧮 Cách code chọn nghiệm:")
+    lines.append("   - Nghiệm tốt nhất theo RMSE: idxmin('RMSE').")
+    lines.append("   - Nghiệm nhanh nhất: idxmin('train_time_s').")
+    lines.append("   - Nghiệm đơn giản nhất: idxmin('complexity').")
+    lines.append(
+        "   - Nghiệm cân bằng: min-max normalize RMSE, train_time_s, "
+        "complexity rồi chọn khoảng cách Euclid nhỏ nhất tới (0,0,0)."
+    )
 
     # Các cột siêu tham số (loại bỏ cột mục tiêu và n_gen)
     objective_cols = {'RMSE', 'train_time_s', 'complexity', 'n_gen'}

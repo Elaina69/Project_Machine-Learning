@@ -232,6 +232,7 @@ Module: modules/comparison.py → gọi trong main.ipynb mục 6
 - [ ] **Biểu đồ so sánh**: grouped bar chart / radar chart so sánh metrics giữa 2 baselines
 - [ ] **Biểu đồ Actual vs Predicted** cho mô hình tốt nhất của mỗi baseline
 - [ ] **Phân tích sai số theo thời gian**: baseline nào predict tốt hơn vào giờ cao điểm?
+- [ ] **Phân tích lỗi dự báo**: liệt kê worst cases, tổng hợp lỗi theo sensor/hour/flow regime, nêu nguyên nhân có thể và hướng cải thiện
 - [ ] **Nhận xét & kết luận**:
   - Baseline nào cho kết quả dự báo tốt hơn? Tại sao?
   - Mô hình nào phù hợp nhất cho từng baseline?
@@ -239,13 +240,30 @@ Module: modules/comparison.py → gọi trong main.ipynb mục 6
 
 ---
 
-## 8. Kiểm định độ ổn định sau tối ưu Pymoo
+## 8. Tối ưu hóa và giải thích mô hình sau Pymoo
+
+```
+Module: modules/optimization.py và modules/explainability.py → gọi trong main.ipynb mục 7
+```
+
+Sau khi chọn 2 mô hình tốt nhất trên cả hai baseline, Pymoo tối ưu riêng từng cụm sensor theo 3 mục tiêu: `RMSE`, `train_time_s`, `complexity`. Sau Pymoo, Monte Carlo và trượt thời gian, notebook dùng nghiệm cân bằng để chạy SHAP cho 4 mô hình tối ưu:
+
+- SHAP summary top 14 feature ảnh hưởng mạnh nhất.
+- Các feature còn lại được gộp vào dòng `other`.
+- Bảng `optimized_shap_top14_other.csv` để so sánh 4 case tối ưu.
+- Sau GAN, bảng `gan_shap_top14_other.csv` và `gan_xai_comparison.csv` để so sánh độ nhạy với mô hình gốc.
+
+Mục XAI chỉ dùng SHAP và được đặt sau stability để giải thích đúng các mô hình đã kiểm định.
+
+---
+
+## 9. Kiểm định độ ổn định sau tối ưu Pymoo
 
 ```
 Module: modules/stability.py → gọi trong main.ipynb mục 8 và 9
 ```
 
-### 8.1 Monte Carlo stability
+### 9.1 Monte Carlo stability
 
 Sau khi Pymoo trả về Pareto front, notebook chọn nghiệm cân bằng (compromise solution) cho từng mô hình được tối ưu. Với 2 mô hình tốt nhất × 2 baseline, ta có **4 trường hợp mô hình tối ưu** cần kiểm định:
 
@@ -267,7 +285,7 @@ Biểu đồ cần có:
 - Histogram/phân phối tần suất có đường KDE.
 - Mean RMSE và khoảng tin cậy 95%.
 
-### 8.2 Time sliding stability
+### 9.2 Time sliding stability
 
 Dùng kỹ thuật trượt thời gian để chứng minh bộ dữ liệu ổn định qua các giai đoạn khác nhau:
 
@@ -283,7 +301,7 @@ Tập train luôn nằm trước tập test, không đảo lộn thời gian. N�
 
 ---
 
-## 9. Cấu trúc chạy trong `main.ipynb`
+## 10. Cấu trúc chạy trong `main.ipynb`
 
 > **Toàn bộ logic** nằm trong `modules/`, notebook `main.ipynb` chỉ import và gọi hàm.
 
@@ -340,7 +358,8 @@ main.ipynb
 │   ├── 6.2. Biểu đồ so sánh (bar chart, radar chart)
 │   ├── 6.3. Actual vs Predicted cho mô hình tốt nhất
 │   ├── 6.4. Phân tích sai số theo thời gian
-│   └── 6.5. Nhận xét & Kết luận
+│   ├── 6.5. Nhận xét & Kết luận
+│   └── 6.6. Phân tích lỗi dự báo: worst cases, nguyên nhân, hướng cải thiện
 │
 ├── 7. Tối ưu hóa đa mục tiêu (Pymoo)
 │   ├── 7.1. Chọn 2 mô hình tốt nhất trên cả 2 baselines
@@ -348,7 +367,8 @@ main.ipynb
 │   ├── 7.3. Chạy tối ưu hóa Baseline A
 │   ├── 7.4. Chạy tối ưu hóa Baseline B
 │   ├── 7.5. Trực quan hóa Pareto Front (3D + 2D)
-│   └── 7.6. Phân tích đánh đổi (Trade-off Analysis)
+│   ├── 7.6. Phân tích đánh đổi (Trade-off Analysis)
+│   └── 7.6. Phân tích đánh đổi và chọn nghiệm cân bằng
 │
 ├── 8. Chứng minh độ ổn định bằng Monte Carlo
 │   ├── 8.1. Cấu hình Monte Carlo
@@ -362,18 +382,20 @@ main.ipynb
 │   ├── 9.3. Kết luận độ ổn định của bộ dữ liệu
 │   └── 9.4. Scorecard chọn mô hình tốt nhất sau Pymoo + stability
 │
-├── 10. Tạo sinh dữ liệu bằng GAN
-│   ├── 10.1. Cấu hình dữ liệu và mô hình GAN
-│   ├── 10.2. Huấn luyện feature-space GAN trên train set thật
-│   ├── 10.3. Sinh dữ liệu ảo tỷ lệ 1:1
-│   ├── 10.4. Đánh giá Train Real/Test Fake và Train Fake/Test Real
-│   ├── 10.5. Tích hợp dữ liệu ảo và tìm điểm bão hòa
-│   └── 10.6. Hướng mở rộng: chạy lại Pymoo và XAI
+├── 10. Giải Thích & Độ Nhạy (XAI)
+│   └── SHAP top 14 + other cho 4 mô hình tối ưu
+│
+├── 11. Tạo sinh dữ liệu bằng GAN
+│   ├── 11.1. Cấu hình dữ liệu và mô hình GAN
+│   ├── 11.2. Huấn luyện feature-space GAN trên train set thật
+│   ├── 11.3. Đánh giá Train Real/Test Fake và Train Fake/Test Real
+│   ├── 11.4. Tích hợp dữ liệu ảo và tìm điểm bão hòa
+│   └── 11.5. SHAP sau GAN và so sánh với mô hình tối ưu gốc
 ```
 
 ---
 
-## 10. Tạo sinh dữ liệu bằng GAN
+## 11. Tạo sinh dữ liệu bằng GAN
 
 ```
 Module: modules/gan_synthetic.py → gọi trong main.ipynb mục 10
@@ -390,7 +412,7 @@ Mục tiêu của phần GAN là sinh dữ liệu ảo trong không gian mẫu �
 
 ---
 
-## 11. Dashboard — `demo.ipynb`
+## 12. Dashboard — `demo.ipynb`
 
 ```
 File: demo.ipynb (chạy riêng, load mô hình đã train từ models/)
@@ -411,7 +433,7 @@ File: demo.ipynb (chạy riêng, load mô hình đã train từ models/)
 
 ---
 
-## 12. Cấu trúc thư mục dự kiến
+## 13. Cấu trúc thư mục dự kiến
 
 ```
 DoAn_MachineLearning_UTT/
@@ -440,7 +462,9 @@ DoAn_MachineLearning_UTT/
 │   ├── models.py                      # Định nghĩa, huấn luyện & đánh giá 10 mô hình
 │   ├── visualization.py              # Vẽ biểu đồ, charts
 │   ├── comparison.py                 # So sánh 2 baselines
+│   ├── error_analysis.py             # Phân tích lỗi dự báo
 │   ├── optimization.py               # Tối ưu hóa đa mục tiêu (Pymoo NSGA-II/III)
+│   ├── explainability.py             # SHAP top 14 + other cho XAI
 │   ├── stability.py                  # Monte Carlo + time sliding + chọn mô hình cuối
 │   └── gan_synthetic.py              # Sinh dữ liệu ảo bằng GAN trong không gian feature
 ├── pymooCheckpoint/                   # Checkpoint lưu tiến trình tối ưu Pymoo (tự tạo)
@@ -457,7 +481,7 @@ DoAn_MachineLearning_UTT/
 
 ---
 
-## 13. Thư viện cần sử dụng
+## 14. Thư viện cần sử dụng
 
 ```txt
 pandas>=2.0
@@ -471,11 +495,12 @@ plotly>=5.15
 ipywidgets>=8.0           # Cho dashboard trong notebook
 joblib                    # Lưu mô hình
 pymoo>=0.6.0              # Tối ưu hóa đa mục tiêu
+shap>=0.45                # Explainability bằng SHAP
 ```
 
 ---
 
-## 14. Timeline thực hiện (gợi ý)
+## 15. Timeline thực hiện (gợi ý)
 
 | Tuần | Công việc | Modules liên quan |
 |---|---|---|
@@ -486,7 +511,7 @@ pymoo>=0.6.0              # Tối ưu hóa đa mục tiêu
 
 ---
 
-## 15. Checklist tổng hợp
+## 16. Checklist tổng hợp
 
 ### Phân tích dữ liệu
 - [ ] EDA đầy đủ cho 8 sensors
@@ -511,12 +536,14 @@ pymoo>=0.6.0              # Tối ưu hóa đa mục tiêu
 - [ ] Hệ thống cảnh báo (bình thường / theo dõi / cảnh báo)
 - [ ] Tối ưu hóa đa mục tiêu 2 mô hình tốt nhất (Pymoo)
 - [ ] Pareto Front visualization + phân tích đánh đổi
+- [ ] Phân tích lỗi dự báo: worst cases, lỗi theo sensor/hour/flow regime, nguyên nhân và hướng cải thiện
+- [ ] SHAP top 14 + other sau stability để giải thích 4 mô hình tối ưu
 - [ ] Monte Carlo stability cho 4 mô hình tối ưu (2 mô hình × 2 baseline)
 - [ ] Boxplot, KDE và khoảng tin cậy 95% cho RMSE Monte Carlo
 - [ ] Time sliding validation 5 fold (train 60%, test 10%, shift 5%)
 - [ ] Kết luận bộ dữ liệu ổn định dựa trên RMSE/CV qua các fold
 - [ ] Scorecard cuối để chọn mô hình tốt nhất sau Pymoo + Monte Carlo + time sliding
-- [ ] GAN synthetic data: Train Real/Test Fake, Train Fake/Test Real, augmentation saturation
+- [ ] GAN synthetic data: Train Real/Test Fake, Train Fake/Test Real, augmentation saturation, SHAP sau GAN
 
 ---
 

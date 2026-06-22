@@ -73,7 +73,7 @@ An toàn nhất: Pre-train mô hình bằng lượng lớn dữ liệu ảo từ
 ## Bước 5: Giải Thích & Độ Nhạy (XAI)
 
 * **Minh bạch hóa AI (Explainable AI):** Sử dụng SHAP để bóc tách và định lượng mức độ đóng góp (feature importance) của từng biến đầu vào.
-* **Đồ thị PDP 1D & 2D:** Trực quan hóa xu hướng tác động tuyến tính/phi tuyến của các biến ngoại sinh lên kết quả dự báo.
+* **Phân tích độ nhạy bằng SHAP:** Trực quan hóa top feature ảnh hưởng mạnh nhất và gộp các feature còn lại vào nhóm `other`.
 * **Phân tích đối chiếu:** So sánh sự thay đổi về tầm quan trọng của các đặc trưng giữa mô hình gốc (Bài toán 1) và mô hình tổng quát (Bài toán 2).
 
 ---

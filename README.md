@@ -8,9 +8,12 @@ Luồng chính nằm trong `main.ipynb`:
 2. Chia Baseline A/B theo sensor và hold-out split theo thời gian.
 3. Huấn luyện 3 trivial baselines + 7 mô hình ML.
 4. So sánh hai baseline bằng MAE, RMSE, MAPE, R², MASE.
-5. Tối ưu 2 mô hình tốt nhất bằng Pymoo với 3 mục tiêu: RMSE, thời gian tìm kiếm, độ phức tạp.
-6. Chạy Monte Carlo cho 4 mô hình tối ưu, giữ split thời gian cố định.
-7. Kiểm định ổn định dữ liệu bằng 5 cửa sổ trượt thời gian: train 60%, test 10%, shift 5%.
-8. Chọn mô hình cuối bằng scorecard tổng hợp và mở rộng sinh dữ liệu bằng feature-space GAN.
+5. Phân tích lỗi dự báo: worst cases, lỗi theo sensor/hour/flow regime, nguyên nhân và hướng cải thiện.
+6. Tối ưu 2 mô hình tốt nhất bằng Pymoo với 3 mục tiêu: RMSE, thời gian tìm kiếm, độ phức tạp.
+7. Chạy Monte Carlo cho 4 mô hình tối ưu, giữ split thời gian cố định.
+8. Kiểm định ổn định dữ liệu bằng 5 cửa sổ trượt thời gian: train 60%, test 10%, shift 5%.
+9. Chọn mô hình cuối bằng scorecard tổng hợp.
+10. Dùng SHAP top 14 + `other` để giải thích độ nhạy cho 4 mô hình tối ưu.
+11. Mở rộng sinh dữ liệu bằng feature-space GAN cho 4 mô hình tối ưu và so sánh XAI sau GAN.
 
 Tài liệu chi tiết nằm trong `.docs/plan.md`, `.docs/workflow.md` và `.docs/structure.md`.

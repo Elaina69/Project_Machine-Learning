@@ -13,7 +13,9 @@ graph TD
     B --> B6["comparison.py"]
     B --> B7["optimization.py"]
     B --> B8["stability.py"]
-    B --> B9["gan_synthetic.py"]
+    B --> B9["error_analysis.py"]
+    B --> B10["explainability.py"]
+    B --> B11["gan_synthetic.py"]
 
     A -->|đọc| C["__datasets-raw/SV16_...csv"]
     A -->|ghi| D["__datasets-clean/*.csv"]
@@ -333,6 +335,29 @@ comparison.generate_conclusion(results_a, results_b)
          └── 📝 So sánh từng model: A vs B → winner + chênh lệch
 ```
 
+#### 6.6 — Phân tích lỗi dự báo
+
+```
+error_analysis.build_error_dataframe()
+         │
+         ├── Ghép test_df + actual + predicted + residual
+         ├── Tính error, abs_error, APE, bias_type
+         ├── Gắn flow_regime: low / medium / high
+         └── Lưu chi tiết lỗi để đưa vào báo cáo
+
+error_analysis.summarize_error_segments()
+         │
+         ├── Tổng hợp lỗi theo sensor_id
+         ├── Tổng hợp lỗi theo hour
+         └── Tổng hợp lỗi theo flow_regime
+
+error_analysis.infer_error_causes()
+         │
+         └── Gợi ý nguyên nhân có thể và hướng cải thiện
+```
+
+Phần này nằm trước Pymoo vì yêu cầu nhiệm vụ cần nêu các trường hợp dự báo sai trước khi chuyển sang tối ưu hyperparameter. Các bảng chính gồm `worst_forecasts`, `sensor_error_summary`, `hour_error_summary`, `flow_regime_error_summary` và `error_cause_table`.
+
 ---
 
 ### Bước 7 → Tối ưu hóa đa mục tiêu (Pymoo)
@@ -412,6 +437,22 @@ optimization.analyze_tradeoffs(pareto_df, model_name)
          └── 🔑 Nghiệm cân bằng (TOPSIS-like compromise)
                → Params được đề xuất
 ```
+
+#### Sau 9.4 — SHAP giải thích độ nhạy cho 4 mô hình tối ưu
+
+```
+explainability.fit_optimized_model()
+         │
+         └── Fit lại nghiệm cân bằng Pymoo trên train+valid
+
+explainability.compute_shap_values()
+         │
+         ├── SHAP summary top 14 feature mạnh nhất
+         ├── Gộp các feature còn lại thành "other"
+         └── Bảng optimized_shap_top14_other.csv
+```
+
+Trong pipeline hiện tại, XAI đặt sau Pymoo, Monte Carlo và trượt thời gian để giải thích đúng 4 mô hình tối ưu đã được kiểm định. Notebook chỉ dùng SHAP.
 
 ---
 
@@ -550,8 +591,10 @@ graph LR
     FE --> MD["models.py"]
     MD --> VZ["visualization.py"]
     MD --> CP["comparison.py"]
+    CP --> EA["error_analysis.py"]
     MD --> OP["optimization.py"]
     OP --> ST["stability.py"]
+    OP --> XAI["explainability.py"]
     ST --> GAN["gan_synthetic.py"]
     VZ --> CP
     CP --> OP
@@ -574,9 +617,11 @@ graph LR
 | `models` | X_train, y_train, ... | `results_df`, `trained_models` | main.ipynb §5 |
 | `visualization` | y_test, y_pred | Biểu đồ | main.ipynb §5.4, §5.5 |
 | `comparison` | results_a, results_b | Bảng + biểu đồ + kết luận | main.ipynb §6 |
+| `error_analysis` | test_df, actual, predicted | Worst cases, lỗi theo sensor/hour/flow, nguyên nhân và hướng cải thiện | main.ipynb §6.6 |
 | `optimization` | X_train/valid, results_a/b | Pareto front + trade-off analysis | main.ipynb §7 |
+| `explainability` | optimized params, train/valid/test, FEATURE_COLS | SHAP top 14 + other cho 4 mô hình tối ưu và mô hình sau GAN | main.ipynb §10, §11.4 |
 | `stability` | Pareto params, train/valid/test, df baseline | Monte Carlo summary, time sliding summary, scorecard chọn mô hình cuối | main.ipynb §8, §9 |
-| `gan_synthetic` | df train đã feature engineering, FEATURE_COLS, params mô hình tốt nhất | synthetic data, Real/Fake utility, augmentation results | main.ipynb §10 |
+| `gan_synthetic` | df train đã feature engineering, FEATURE_COLS, params 4 mô hình tối ưu | synthetic data, Real/Fake utility, augmentation results | main.ipynb §11 |
 
 ---
 
@@ -619,22 +664,34 @@ SV16_PeMSD3_sample_8sensors.csv (48,385 dòng × 6 cột)
   │     → Bảng so sánh + biểu đồ + kết luận tự động
   │     → Lưu biểu đồ vào resultImages/
   │
+  ├── [error_analysis.*]
+  │     → Tạo bảng residual cho best model của mỗi baseline
+  │     → Liệt kê worst forecast cases
+  │     → Tổng hợp lỗi theo sensor/hour/flow regime
+  │     → Gợi ý nguyên nhân có thể và hướng cải thiện
+  │
   ├── [optimization.*]
   │     → Chọn 2 mô hình tốt nhất trên cả 2 baselines
   │     → NSGA-II/III → Pareto front (RMSE × Time × Complexity)
   │     → Trực quan hóa 3D + 2D + phân tích đánh đổi
   │
-  └── [stability.*]
-        → Lấy params từ nghiệm cân bằng sau Pymoo
-        → Monte Carlo cho 4 mô hình tối ưu, giữ split thời gian cố định
-        → Vẽ boxplot, KDE, CI 95%
-        → Time sliding 5 fold: train 60%, test 10%, shift 5%
-        → Kết luận độ ổn định dữ liệu qua RMSE/CV
-        → Scorecard cuối để chọn mô hình tốt nhất và ổn định nhất
+  ├── [stability.*]
+  │     → Lấy params từ nghiệm cân bằng sau Pymoo
+  │     → Monte Carlo cho 4 mô hình tối ưu, giữ split thời gian cố định
+  │     → Vẽ boxplot, KDE, CI 95%
+  │     → Time sliding 5 fold: train 60%, test 10%, shift 5%
+  │     → Kết luận độ ổn định dữ liệu qua RMSE/CV
+  │     → Scorecard cuối để chọn mô hình tốt nhất và ổn định nhất
+
+  ├── [explainability.*]
+  │     → Fit lại 4 nghiệm cân bằng Pymoo trên train+valid
+  │     → SHAP summary top 14 + other
+  │     → Lưu optimized_shap_top14_other.csv
   │
   └── [gan_synthetic.*]
         → Huấn luyện feature-space GAN trên train set thật
-        → Sinh synthetic data 1:1 hoặc 1:N
-        → Đánh giá Train Real/Test Fake và Train Fake/Test Real
-        → Thử tăng cường dữ liệu và tìm điểm bão hòa synthetic
+        → Sinh synthetic data đủ cho tỷ lệ lớn nhất 2.0
+        → Đánh giá Train Real/Test Fake và Train Fake/Test Real cho 4 case
+        → Thử tăng cường dữ liệu với tỷ lệ 0.0, 0.5, 1.0, 2.0
+        → Tính SHAP sau GAN và so sánh với mô hình tối ưu gốc
 ```

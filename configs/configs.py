@@ -62,3 +62,28 @@ STABILITY_CONFIG = {
     'sliding_random_state': 69,
     'stable_cv_threshold': 10.0,
 }
+
+GAN_CONFIG = {
+    # Feature-space GAN: học FEATURE_COLS + target, không ghép timestamp giả
+    # vào chuỗi thời gian thật.
+    'sample_size': 8000,
+    'synthetic_ratio': 1.0,
+    'augmentation_ratios': [0.0, 0.5, 1.0, 2.0],
+    'noise_dim': 32,
+    'hidden_dim': 128,
+    'epochs': 100,
+    'batch_size': 256,
+    'lr': 2e-4,
+    'random_state': CONFIG['random_state'],
+}
+
+XAI_CONFIG = {
+    # SHAP summary chỉ hiển thị 14 feature mạnh nhất; phần còn lại gộp vào
+    # một dòng "other" để hình không bị quá tải.
+    'shap_sample_size': 1500,
+    'top_features': 14,
+    'other_label': 'other',
+    'flow_feature': 'flow_lag_1',
+    'hour_feature': 'hour',
+    'random_state': CONFIG['random_state'],
+}

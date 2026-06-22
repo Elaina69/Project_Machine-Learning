@@ -1,0 +1,7 @@
+baseline,model,flow_regime,n,MAE,RMSE,MAPE_%,bias_mean,actual_mean,predicted_mean,under_predict_%
+Baseline_B,6_XGBoost,high_flow,1207,11.35,14.3693,9.3281,3.1036,124.1523,121.0487,58.575
+Baseline_A,5_RandomForest,high_flow,1207,11.0726,13.961,8.4283,3.1897,133.4504,130.2607,60.232
+Baseline_B,6_XGBoost,medium_flow,1206,10.98,13.5163,15.7626,4.1238,69.8116,65.6878,64.5937
+Baseline_A,5_RandomForest,medium_flow,1206,10.7058,13.1711,14.1845,4.4189,75.6638,71.2449,65.9204
+Baseline_B,6_XGBoost,low_flow,1207,9.5244,12.117,28.333,-7.3306,42.3774,49.708,23.1152
+Baseline_A,5_RandomForest,low_flow,1207,9.3766,11.9781,24.0804,-7.1451,47.0427,54.1877,23.3637

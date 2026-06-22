@@ -1,0 +1,9 @@
+case,feature,rank,mean_abs_shap
+Baseline_A | 6_XGBoost,flow_lag_1,18,0.295037
+Baseline_B | 6_XGBoost,flow_lag_1,24,0.167922
+Baseline_A | 5_RandomForest,flow_lag_1,20,0.028061
+Baseline_B | 5_RandomForest,flow_lag_1,35,0.017586
+Baseline_A | 6_XGBoost,hour,3,5.190257
+Baseline_B | 6_XGBoost,hour,4,4.96683
+Baseline_A | 5_RandomForest,hour,4,1.86768
+Baseline_B | 5_RandomForest,hour,3,1.556659

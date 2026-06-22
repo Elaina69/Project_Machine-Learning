@@ -1,0 +1,21 @@
+baseline,model,timestamp,sensor_id,hour,weekday,flow_regime,actual,predicted,error,abs_error,ape_%,bias_type
+Baseline_B,6_XGBoost,2024-02-19 07:20:00,PEMSD3_012,7,0,high_flow,158.9,106.503,52.397,52.397,32.9748,under_predict
+Baseline_B,6_XGBoost,2024-02-18 20:35:00,PEMSD3_013,20,6,high_flow,99.36,50.7936,48.5664,48.5664,48.8792,under_predict
+Baseline_B,6_XGBoost,2024-02-19 02:45:00,PEMSD3_012,2,0,high_flow,90.88,44.6392,46.2408,46.2408,50.8811,under_predict
+Baseline_A,5_RandomForest,2024-02-19 17:15:00,PEMSD3_008,17,0,high_flow,174.35,129.6794,44.6706,44.6706,25.6212,under_predict
+Baseline_B,6_XGBoost,2024-02-20 16:40:00,PEMSD3_013,16,1,high_flow,188.86,144.2183,44.6417,44.6417,23.6375,under_predict
+Baseline_A,5_RandomForest,2024-02-21 18:25:00,PEMSD3_010,18,2,high_flow,120.48,164.9545,-44.4745,44.4745,36.9144,over_predict
+Baseline_B,6_XGBoost,2024-02-19 06:05:00,PEMSD3_011,6,0,medium_flow,56.63,101.0296,-44.3996,44.3996,78.403,over_predict
+Baseline_A,5_RandomForest,2024-02-21 09:05:00,PEMSD3_009,9,2,medium_flow,87.11,130.3932,-43.2832,43.2832,49.6879,over_predict
+Baseline_A,5_RandomForest,2024-02-21 18:35:00,PEMSD3_009,18,2,high_flow,180.98,137.8579,43.1221,43.1221,23.827,under_predict
+Baseline_A,5_RandomForest,2024-02-21 15:40:00,PEMSD3_009,15,2,high_flow,143.13,100.0379,43.0921,43.0921,30.1069,under_predict
+Baseline_B,6_XGBoost,2024-02-20 20:50:00,PEMSD3_013,20,1,high_flow,101.54,58.5799,42.9601,42.9601,42.3085,under_predict
+Baseline_B,6_XGBoost,2024-02-21 12:55:00,PEMSD3_014,12,2,high_flow,93.77,50.9014,42.8686,42.8686,45.7168,under_predict
+Baseline_A,5_RandomForest,2024-02-21 19:00:00,PEMSD3_009,19,2,medium_flow,91.28,133.8302,-42.5502,42.5502,46.615,over_predict
+Baseline_B,6_XGBoost,2024-02-20 15:45:00,PEMSD3_014,15,1,high_flow,168.29,126.85,41.44,41.44,24.6241,under_predict
+Baseline_B,6_XGBoost,2024-02-20 06:05:00,PEMSD3_011,6,1,high_flow,130.4,89.0547,41.3453,41.3453,31.7065,under_predict
+Baseline_A,5_RandomForest,2024-02-21 18:00:00,PEMSD3_010,18,2,high_flow,196.68,155.4112,41.2688,41.2688,20.9827,under_predict
+Baseline_B,6_XGBoost,2024-02-19 02:50:00,PEMSD3_014,2,0,medium_flow,89.1,47.8634,41.2366,41.2366,46.2812,under_predict
+Baseline_B,6_XGBoost,2024-02-19 17:35:00,PEMSD3_011,17,0,high_flow,97.75,138.4514,-40.7014,40.7014,41.6382,over_predict
+Baseline_A,5_RandomForest,2024-02-19 16:30:00,PEMSD3_010,16,0,high_flow,180.21,139.5374,40.6726,40.6726,22.5695,under_predict
+Baseline_B,6_XGBoost,2024-02-19 12:05:00,PEMSD3_011,12,0,low_flow,9.34,49.9807,-40.6407,40.6407,435.1252,over_predict

@@ -11,5 +11,7 @@ Modules:
     - comparison: So sánh 2 baselines
     - optimization: Tối ưu hóa đa mục tiêu siêu tham số (Pymoo)
     - stability: Monte Carlo và kiểm định trượt thời gian
+    - error_analysis: Phân tích lỗi dự báo theo sensor/hour/flow regime
+    - explainability: SHAP sau tối ưu Pymoo và sau GAN
     - gan_synthetic: Sinh dữ liệu ảo bằng GAN trong không gian feature
 """
