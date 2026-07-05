@@ -1,0 +1,5 @@
+dashboard/frontend/node_modules/
+dashboard/frontend/dist/
+dashboard/frontend/.vite/
+__pycache__/
+*.pyc

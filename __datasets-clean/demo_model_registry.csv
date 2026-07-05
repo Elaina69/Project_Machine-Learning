@@ -1,0 +1,9 @@
+stage,baseline,model,case,model_path,synthetic_ratio,n_train,n_real_train,n_synthetic_train,n_test,MAE,RMSE,MAPE,R2,MASE
+gan_best,Baseline_A,5_RandomForest,Baseline_A | 5_RandomForest,models/GAN/Baseline_A/5_RandomForest_ratio_0p0.pkl,0.0,16892,16892.0,0.0,3620,10.5137,13.2282,15.7502,0.8847,0.7675
+gan_best,Baseline_A,6_XGBoost,Baseline_A | 6_XGBoost,models/GAN/Baseline_A/6_XGBoost_ratio_0p0.pkl,0.0,16892,16892.0,0.0,3620,10.2835,12.942,15.3627,0.8896,0.7507
+gan_best,Baseline_B,5_RandomForest,Baseline_B | 5_RandomForest,models/GAN/Baseline_B/5_RandomForest_ratio_0p0.pkl,0.0,16892,16892.0,0.0,3620,10.6825,13.4218,17.9474,0.8671,0.7853
+gan_best,Baseline_B,6_XGBoost,Baseline_B | 6_XGBoost,models/GAN/Baseline_B/6_XGBoost_ratio_0p0.pkl,0.0,16892,16892.0,0.0,3620,10.4817,13.1863,17.6105,0.8718,0.7706
+optimized_original,Baseline_A,5_RandomForest,Baseline_A | 5_RandomForest,models/Optimized/Baseline_A/5_RandomForest.pkl,0.0,20512,,,3620,10.432,13.1458,15.6148,0.8861,0.763
+optimized_original,Baseline_A,6_XGBoost,Baseline_A | 6_XGBoost,models/Optimized/Baseline_A/6_XGBoost.pkl,0.0,20512,,,3620,10.2567,12.9133,15.2906,0.8901,0.7502
+optimized_original,Baseline_B,5_RandomForest,Baseline_B | 5_RandomForest,models/Optimized/Baseline_B/5_RandomForest.pkl,0.0,20512,,,3620,10.6718,13.4039,17.8966,0.8675,0.7877
+optimized_original,Baseline_B,6_XGBoost,Baseline_B | 6_XGBoost,models/Optimized/Baseline_B/6_XGBoost.pkl,0.0,20512,,,3620,10.496,13.2033,17.6541,0.8714,0.7747

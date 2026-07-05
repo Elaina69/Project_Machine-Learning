@@ -102,7 +102,7 @@ Module: modules/eda.py → gọi trong main.ipynb mục 4.2
 - [ ] Thống kê mô tả (mean, std, min, max) cho flow, speed, occupancy **per sensor**
 - [ ] Vẽ biểu đồ **time-series flow** cho từng sensor (8 biểu đồ)
 - [ ] So sánh distribution flow giữa 8 sensors (boxplot / violin plot)
-- [ ] Phân tích **correlation** giữa flow, speed, occupancy
+- [ ] Phân tích **correlation** sau feature engineering giữa các feature model-ready và `flow_target`
 - [ ] Phát hiện pattern: giờ cao điểm, ngày trong tuần, anomaly
 - [ ] Kiểm tra **missing data** (timestamp gaps) cho từng sensor
 - [ ] Báo cáo: mỗi sensor có bao nhiêu dòng, missing rate bao nhiêu

@@ -82,12 +82,44 @@ def plot_distribution(df: pd.DataFrame, save_dir: str = None):
     plt.show()
 
 
-def plot_correlation(df: pd.DataFrame, save_dir: str = None):
-    """Heatmap correlation giữa flow, speed, occupancy."""
-    corr = df[['flow', 'speed', 'occupancy']].corr()
-    fig, ax = plt.subplots(figsize=(6, 5))
-    sns.heatmap(corr, annot=True, cmap='coolwarm', center=0, fmt='.3f', ax=ax)
-    ax.set_title('Correlation Matrix')
+def plot_correlation(
+    df: pd.DataFrame,
+    save_dir: str = None,
+    feature_cols: list[str] | None = None,
+    target_col: str = 'flow_target',
+):
+    """Vẽ heatmap correlation sau feature engineering.
+
+    Nếu truyền feature_cols, heatmap dùng đúng các feature model-ready và target.
+    Nếu không, hàm fallback về các cột numeric hiện có trong DataFrame.
+    """
+    if feature_cols is not None:
+        corr_cols = [col for col in [*feature_cols, target_col] if col in df.columns]
+    else:
+        corr_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+
+    if len(corr_cols) < 2:
+        raise ValueError('Cần ít nhất 2 cột numeric để vẽ correlation heatmap.')
+
+    corr = df[corr_cols].corr()
+    n_cols = len(corr_cols)
+    figsize = (max(10, min(24, n_cols * 0.45)), max(8, min(24, n_cols * 0.45)))
+    annot = n_cols <= 12
+
+    fig, ax = plt.subplots(figsize=figsize)
+    sns.heatmap(
+        corr,
+        annot=annot,
+        cmap='coolwarm',
+        center=0,
+        fmt='.2f',
+        ax=ax,
+        square=True,
+        cbar_kws={'shrink': 0.75},
+    )
+    ax.set_title('Correlation Matrix sau Feature Engineering')
+    ax.tick_params(axis='x', rotation=90)
+    ax.tick_params(axis='y', rotation=0)
     plt.tight_layout()
     if save_dir:
         Path(save_dir).mkdir(parents=True, exist_ok=True)
@@ -141,7 +173,6 @@ def run_full_eda(df: pd.DataFrame, save_dir: str = None):
     print("\n--- 3. Biểu đồ ---")
     plot_timeseries_flow(df, save_dir)
     plot_distribution(df, save_dir)
-    plot_correlation(df, save_dir)
     plot_hourly_pattern(df, save_dir)
 
     print("\n✅ EDA hoàn tất!")

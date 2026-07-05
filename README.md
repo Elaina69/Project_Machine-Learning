@@ -16,4 +16,10 @@ Luồng chính nằm trong `main.ipynb`:
 10. Dùng SHAP top 14 + `other` để giải thích độ nhạy cho 4 mô hình tối ưu.
 11. Mở rộng sinh dữ liệu bằng feature-space GAN cho 4 mô hình tối ưu và so sánh XAI sau GAN.
 
+Dashboard/demo mới nằm trong `dashboard/`:
+
+- Backend: FastAPI, chỉ load 4 mô hình baseline tối ưu ở `models/Optimized`.
+- Frontend: React single-page app, hiển thị dữ liệu gốc, dự báo, metrics, SHAP và cảnh báo/khuyến nghị.
+- Chạy nhanh: xem `dashboard/README.md`.
+
 Tài liệu chi tiết nằm trong `.docs/plan.md`, `.docs/workflow.md` và `.docs/structure.md`.

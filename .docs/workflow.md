@@ -104,7 +104,6 @@ eda.describe_per_sensor(df_raw)    → Bảng mean/std/min/max cho flow, speed, 
 eda.check_missing(df_raw)          → Bảng missing values + timestamp gaps per sensor
 eda.plot_timeseries_flow(df_raw)   → 8 biểu đồ dòng flow theo thời gian
 eda.plot_distribution(df_raw)      → Boxplot so sánh flow/speed/occupancy giữa 8 sensors
-eda.plot_correlation(df_raw)       → Heatmap correlation flow ↔ speed ↔ occupancy
 eda.plot_hourly_pattern(df_raw)    → Flow trung bình theo giờ (weekday vs weekend)
 ```
 
@@ -155,6 +154,8 @@ fe.prepare_all_features(df_raw, CONFIG)
 | Time features | `hour`, `weekday`, `is_weekend` | 3 |
 | **Tổng** | | **36** |
 | **Target** | `flow_target` | 1 |
+
+Sau khi đã có `df_featured`, notebook mới vẽ ma trận tương quan bằng `eda.plot_correlation(df_featured, feature_cols=FEATURE_COLS, target_col='flow_target')`. Ma trận này dùng các feature model-ready và target, không dùng `df_raw` trước bước feature engineering.
 
 #### 4.4 — Chia Baseline A & B
 
